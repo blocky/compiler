@@ -1,2 +1,2 @@
-# bkyc
+# BKYC
 WASM (reproducible) compilation tool

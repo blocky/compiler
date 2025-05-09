@@ -1,0 +1,20 @@
+name: Setup Environment
+description: 'Setup Environment for workflows'
+
+inputs:
+  gh-access-token:
+    description: 'GitHub access token for private repo(s)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: './go.mod'
+
+    - name: Setup private repos
+      shell: bash
+      run: |
+        git config --global url.https://${{ inputs.gh-access-token }}@github.com/.insteadOf https://github.com/

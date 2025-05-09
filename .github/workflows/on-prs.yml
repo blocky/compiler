@@ -35,22 +35,6 @@ jobs:
         config: './golangci.yaml'
         timeout: '3m'
 
-  unit-test-mac:
-    # unit tests on ubuntu are already covered by on-every-commit.yml
-    # macos-14 is M1 (i.e., ARM)
-    runs-on: macos-14
-    steps:
-    - name: Checkout Repo
-      uses: actions/checkout@v4
-
-    - name: Setup Environment
-      uses: ./.github/actions/setup-env
-      with:
-        gh-access-token: ${{ secrets.GH_ACCESS_TOKEN }}
-
-    - name: Run Unit Tests
-      run: make test-short
-
   integration-test:
     runs-on: ubuntu-latest
     env:

@@ -10,7 +10,7 @@ tidy:
 # All tests that skip in short mode should be explicitly marked with
 # their own test rule
 test-short:
-	@go test ./... -race -short -count=1
+	@go test -v ./... -race -short -count=1
 
 # All integration tests are skipped when running in short mode.
 # They may rely on external services, for example "docker"
@@ -22,3 +22,10 @@ lint:
 
 fix-lint:
 	@golangci-lint run --config golangci.yaml --fix
+
+mock: tidy
+	@rm -rf mocks
+	@mockery --quiet --config=mockery.yaml
+
+veryclean:
+	@rm -rf mocks

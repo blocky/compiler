@@ -1,4 +1,4 @@
-package main_test
+package bkyc_test
 
 import (
 	"testing"

@@ -332,7 +332,7 @@ func TestClient_PullImage(t *testing.T) {
 		defer ts.Close()
 
 		// expecting
-		mockLogger := mocks.NewDockerizeLogger(t)
+		mockLogger := mocks.NewCargoLogger(t)
 		for _, status := range wantPullStatus {
 			mockLogger.EXPECT().
 				Debug(status).
@@ -376,7 +376,7 @@ func TestClient_PullImage(t *testing.T) {
 		defer ts.Close()
 
 		// expecting
-		mockLogger := mocks.NewDockerizeLogger(t)
+		mockLogger := mocks.NewCargoLogger(t)
 		for _, status := range wantPullStatus {
 			mockLogger.EXPECT().
 				Debug(status).
@@ -413,7 +413,7 @@ func TestClient_PullImage(t *testing.T) {
 		defer ts.Close()
 
 		// expecting
-		mockLogger := mocks.NewDockerizeLogger(t)
+		mockLogger := mocks.NewCargoLogger(t)
 		mockLogger.AssertNotCalled(t, "Debug", mock.Anything)
 
 		sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, mockLogger)

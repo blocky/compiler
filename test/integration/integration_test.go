@@ -8,6 +8,12 @@ import (
 	"testing"
 )
 
+var cliCmd = flag.String(
+	"cli",
+	"go run ../../cmd/cli/...",
+	"command to run tested CLI",
+)
+
 func containerRuntimeAvailable() bool {
 	cmd := exec.Command("docker", "version")
 	if err := cmd.Run(); err != nil {

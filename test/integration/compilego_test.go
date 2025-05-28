@@ -47,9 +47,9 @@ func assertDirEmpty(t *testing.T, path string) {
 
 func removeContainersByPrefix(prefix string) *exec.Cmd {
 	removeCmd := fmt.Sprintf(`
-        ids=$(docker ps -a --filter "name=^/%s" -q)
-        if [ -n "$ids" ]; then
-            docker rm -f $ids
+        cIDs=$(docker ps -a --filter "name=^/%s" -q)
+        if [ -n "$cIDs" ]; then
+            docker rm -f $cIDs
         fi
     `, prefix)
 	return exec.Command("bash", "-c", removeCmd)
@@ -117,8 +117,8 @@ func Test_CompileGo(t *testing.T) {
 		assert.ErrorContains(t, gotErr, "running compilation")
 		assert.ErrorContains(t, gotErr, "running container")
 		assert.ErrorContains(t, gotErr, "status: '1'")
-		assert.ErrorContains(t, gotErr, "main.go:17:7: expected ';', found file")
-		assert.ErrorContains(t, gotErr, "main.go:18:3: expected '}', found 'EOF'")
+		assert.ErrorContains(t, gotErr, "main.go:11:7: expected ';', found file")
+		assert.ErrorContains(t, gotErr, "main.go:12:3: expected '}', found 'EOF'")
 
 		assertDirEmpty(t, outDir)
 	})

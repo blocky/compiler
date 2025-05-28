@@ -55,6 +55,13 @@ func removeContainersByPrefix(prefix string) *exec.Cmd {
 	return exec.Command("bash", "-c", removeCmd)
 }
 
+func createTempDir(t *testing.T, mode os.FileMode) string {
+	outDir := t.TempDir()
+	err := os.Chmod(outDir, mode)
+	require.NoError(t, err)
+	return outDir
+}
+
 func Test_CompileGo(t *testing.T) {
 	t.Cleanup(func() {
 		removeContainersByPrefix(bkyc.BkycPrefix)
@@ -69,8 +76,10 @@ func Test_CompileGo(t *testing.T) {
 			projRootDir,
 		)
 
+		outDir := createTempDir(t, 0777)
+
 		inPath := filepath.Join(projRootDir, "main.go")
-		outPath := filepath.Join(t.TempDir(), "got.wasm")
+		outPath := filepath.Join(outDir, "got.wasm")
 
 		// when
 		gotErr := bkyc.CompileGo(
@@ -98,7 +107,7 @@ func Test_CompileGo(t *testing.T) {
 			projRootDir,
 		)
 
-		outDir := t.TempDir()
+		outDir := createTempDir(t, 0777)
 
 		inPath := filepath.Join(projRootDir, "main.go")
 		outPath := filepath.Join(outDir, "got.wasm")

@@ -1,4 +1,4 @@
-package cargo
+package container
 
 import (
 	"bytes"
@@ -66,7 +66,7 @@ func newUnixSockHTTPClient() *http.Client {
 func NewClientWithLogger(log Logger) *Client {
 	return NewClientFromRaw(
 		newUnixSockHTTPClient(),
-		"http://cargo.unix.sock",
+		"http://placeholder.for.unix.sock",
 		log,
 	)
 }
@@ -165,11 +165,11 @@ func (c *Client) Compatible(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("invalid client api version: %w", err)
 	}
 
-	if minVer <= currVer && currVer <= maxVer {
-		return true, nil
+	if currVer < minVer || maxVer < currVer {
+		return false, nil
 	}
 
-	return false, nil
+	return true, nil
 }
 
 func (c *Client) ImageExists(
@@ -246,7 +246,7 @@ type CreateConfig struct {
 	WorkingDir string     `json:"WorkingDir"`
 	Cmd        []string   `json:"Cmd"`
 	HostConfig HostConfig `json:"HostConfig"`
-	Tty        bool       `json:"Tty"`
+	TTY        bool       `json:"Tty"`
 }
 
 func NewCreateConfig(in Config) CreateConfig {
@@ -261,7 +261,7 @@ func NewCreateConfig(in Config) CreateConfig {
 			Binds:      in.Binds,
 			AutoRemove: in.AutoRemove,
 		},
-		Tty: true,
+		TTY: true,
 	}
 }
 

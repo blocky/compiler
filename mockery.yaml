@@ -3,6 +3,6 @@ mockname: "{{.PackageName | camelcase}}{{.InterfaceName}}"
 outpkg: "mocks"
 filename: "{{.PackageName | camelcase}}{{.InterfaceName}}.go"
 packages:
-  github.com/blocky/bkyc/internal/cargo:
+  github.com/blocky/bkyc/internal/container:
     interfaces:
       Logger:

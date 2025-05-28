@@ -1,4 +1,4 @@
-package cargo_test
+package container_test
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/blocky/bkyc/internal/cargo"
+	"github.com/blocky/bkyc/internal/container"
 	"github.com/blocky/bkyc/mocks"
 )
 
@@ -31,7 +31,7 @@ func (c ClientThatErrors) Do(_ *http.Request) (*http.Response, error) {
 func TestNewClientFromRaw(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		// when
-		got := cargo.NewClientFromRaw(http.DefaultClient, "sample-url", slog.Default())
+		got := container.NewClientFromRaw(http.DefaultClient, "sample-url", slog.Default())
 
 		// then
 		assert.NotEmpty(t, got)
@@ -41,7 +41,7 @@ func TestNewClientFromRaw(t *testing.T) {
 func TestNewClientWithLogger(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		// when
-		got := cargo.NewClientWithLogger(slog.Default())
+		got := container.NewClientWithLogger(slog.Default())
 
 		// then
 		assert.NotEmpty(t, got)
@@ -49,7 +49,7 @@ func TestNewClientWithLogger(t *testing.T) {
 }
 
 func TestClient_Compatible(t *testing.T) {
-	clientVersion, err := strconv.ParseFloat(cargo.APIVersion, 64)
+	clientVersion, err := strconv.ParseFloat(container.APIVersion, 64)
 	require.NoError(t, err)
 
 	for name, tc := range map[string]struct {
@@ -98,7 +98,7 @@ func TestClient_Compatible(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 			// when
 			gotCompatible, err := sut.Compatible(context.Background())
@@ -149,7 +149,7 @@ func TestClient_Compatible(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 			// when
 			_, gotErr := sut.Compatible(context.Background())
@@ -184,7 +184,7 @@ func TestClient_Compatible(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 			// when
 			_, gotErr := sut.Compatible(context.Background())
@@ -200,7 +200,7 @@ func TestClient_Compatible(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := cargo.NewClientFromRaw(client, "unused-url", slog.Default())
+		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
 
 		// when
 		_, gotErr := sut.Compatible(context.Background())
@@ -229,7 +229,7 @@ func TestClient_ImageExistsByDigest(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			//given
 			wantDigest := "test-image-digest"
-			wantPath := fmt.Sprintf("/v%s/images/%s/json", cargo.APIVersion, wantDigest)
+			wantPath := fmt.Sprintf("/v%s/images/%s/json", container.APIVersion, wantDigest)
 			wantMethod := "GET"
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -241,7 +241,7 @@ func TestClient_ImageExistsByDigest(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 			// when
 			gotExists, err := sut.ImageExists(context.Background(), wantDigest)
@@ -269,7 +269,7 @@ func TestClient_ImageExistsByDigest(t *testing.T) {
 			//given
 			wantMethod := "GET"
 			wantDigest := "test-image-digest"
-			wantPath := fmt.Sprintf("/v%s/images/%s/json", cargo.APIVersion, wantDigest)
+			wantPath := fmt.Sprintf("/v%s/images/%s/json", container.APIVersion, wantDigest)
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, wantMethod, r.Method)
@@ -278,7 +278,7 @@ func TestClient_ImageExistsByDigest(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 			// when
 			_, gotErr := sut.ImageExists(context.Background(), wantDigest)
@@ -294,7 +294,7 @@ func TestClient_ImageExistsByDigest(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := cargo.NewClientFromRaw(client, "unused-url", slog.Default())
+		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
 
 		// when
 		_, gotErr := sut.ImageExists(context.Background(), "digest")
@@ -311,7 +311,7 @@ func TestClient_PullImage(t *testing.T) {
 		// given
 		wantImage := "test-image"
 		wantMethod := "POST"
-		wantPath := fmt.Sprintf("/v%s/images/create", cargo.APIVersion)
+		wantPath := fmt.Sprintf("/v%s/images/create", container.APIVersion)
 		wantPullStatus := []string{
 			`Pulling from fake-library/not-real-image`,
 			`Download complete`,
@@ -332,14 +332,14 @@ func TestClient_PullImage(t *testing.T) {
 		defer ts.Close()
 
 		// expecting
-		mockLogger := mocks.NewCargoLogger(t)
+		mockLogger := mocks.NewContainerLogger(t)
 		for _, status := range wantPullStatus {
 			mockLogger.EXPECT().
 				Debug(status).
 				Once()
 		}
 
-		sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, mockLogger)
+		sut := container.NewClientFromRaw(ts.Client(), ts.URL, mockLogger)
 
 		// when
 		err := sut.PullImage(context.Background(), wantImage)
@@ -352,7 +352,7 @@ func TestClient_PullImage(t *testing.T) {
 		// given
 		wantImage := "test-image"
 		wantMethod := "POST"
-		wantPath := fmt.Sprintf("/v%s/images/create", cargo.APIVersion)
+		wantPath := fmt.Sprintf("/v%s/images/create", container.APIVersion)
 		wantPullStatus := []string{
 			`Pulling from fake-library/not-real-image`,
 			`50% complete`,
@@ -376,14 +376,14 @@ func TestClient_PullImage(t *testing.T) {
 		defer ts.Close()
 
 		// expecting
-		mockLogger := mocks.NewCargoLogger(t)
+		mockLogger := mocks.NewContainerLogger(t)
 		for _, status := range wantPullStatus {
 			mockLogger.EXPECT().
 				Debug(status).
 				Once()
 		}
 
-		sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, mockLogger)
+		sut := container.NewClientFromRaw(ts.Client(), ts.URL, mockLogger)
 
 		// when
 		err := sut.PullImage(context.Background(), wantImage)
@@ -398,7 +398,7 @@ func TestClient_PullImage(t *testing.T) {
 		// given
 		wantImage := "test-image"
 		wantMethod := "POST"
-		wantPath := fmt.Sprintf("/v%s/images/create", cargo.APIVersion)
+		wantPath := fmt.Sprintf("/v%s/images/create", container.APIVersion)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, wantMethod, r.Method)
@@ -413,10 +413,10 @@ func TestClient_PullImage(t *testing.T) {
 		defer ts.Close()
 
 		// expecting
-		mockLogger := mocks.NewCargoLogger(t)
+		mockLogger := mocks.NewContainerLogger(t)
 		mockLogger.AssertNotCalled(t, "Debug", mock.Anything)
 
-		sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, mockLogger)
+		sut := container.NewClientFromRaw(ts.Client(), ts.URL, mockLogger)
 
 		// when
 		err := sut.PullImage(context.Background(), wantImage)
@@ -443,7 +443,7 @@ func TestClient_PullImage(t *testing.T) {
 			//given
 			wantImage := "test-image"
 			wantMethod := "POST"
-			wantPath := fmt.Sprintf("/v%s/images/create", cargo.APIVersion)
+			wantPath := fmt.Sprintf("/v%s/images/create", container.APIVersion)
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, wantMethod, r.Method)
@@ -453,7 +453,7 @@ func TestClient_PullImage(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 			// when
 			gotErr := sut.PullImage(context.Background(), wantImage)
@@ -469,7 +469,7 @@ func TestClient_PullImage(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := cargo.NewClientFromRaw(client, "unused-url", slog.Default())
+		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
 
 		// when
 		gotErr := sut.PullImage(context.Background(), "image")
@@ -481,8 +481,8 @@ func TestClient_PullImage(t *testing.T) {
 	})
 }
 
-func sampleCfg() cargo.Config {
-	return cargo.Config{
+func sampleCfg() container.Config {
+	return container.Config{
 		Image:      "test-image",
 		Name:       "test-name",
 		User:       "test-user",
@@ -503,7 +503,7 @@ func TestNewCreateConfig(t *testing.T) {
 		want := sampleCfg()
 
 		// when
-		got := cargo.NewCreateConfig(want)
+		got := container.NewCreateConfig(want)
 
 		// then
 		assert.Equal(t, want.Image, got.Image)
@@ -516,7 +516,7 @@ func TestNewCreateConfig(t *testing.T) {
 		assert.Equal(t, want.Binds, got.HostConfig.Binds)
 		assert.Equal(t, want.AutoRemove, got.HostConfig.AutoRemove)
 
-		assert.True(t, got.Tty)
+		assert.True(t, got.TTY)
 
 	})
 }
@@ -527,7 +527,7 @@ func TestClient_Create(t *testing.T) {
 		wantCfg := sampleCfg()
 		wantID := "test-id"
 		wantMethod := "POST"
-		wantPath := fmt.Sprintf("/v%s/containers/create", cargo.APIVersion)
+		wantPath := fmt.Sprintf("/v%s/containers/create", container.APIVersion)
 		wantBody := map[string]any{
 			"Image":      wantCfg.Image,
 			"User":       wantCfg.User,
@@ -561,7 +561,7 @@ func TestClient_Create(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 		// when
 		gotID, err := sut.Create(context.Background(), wantCfg)
@@ -588,7 +588,7 @@ func TestClient_Create(t *testing.T) {
 			//given
 			wantCfg := sampleCfg()
 			wantMethod := "POST"
-			wantPath := fmt.Sprintf("/v%s/containers/create", cargo.APIVersion)
+			wantPath := fmt.Sprintf("/v%s/containers/create", container.APIVersion)
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, wantMethod, r.Method)
@@ -598,7 +598,7 @@ func TestClient_Create(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 			// when
 			_, gotErr := sut.Create(context.Background(), wantCfg)
@@ -612,7 +612,7 @@ func TestClient_Create(t *testing.T) {
 		// given
 		wantCfg := sampleCfg()
 		wantMethod := "POST"
-		wantPath := fmt.Sprintf("/v%s/containers/create", cargo.APIVersion)
+		wantPath := fmt.Sprintf("/v%s/containers/create", container.APIVersion)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, wantMethod, r.Method)
@@ -627,7 +627,7 @@ func TestClient_Create(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 		// when
 		_, err := sut.Create(context.Background(), wantCfg)
@@ -642,10 +642,10 @@ func TestClient_Create(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := cargo.NewClientFromRaw(client, "unused-url", slog.Default())
+		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
 
 		// when
-		_, gotErr := sut.Create(context.Background(), cargo.Config{})
+		_, gotErr := sut.Create(context.Background(), container.Config{})
 
 		// then
 		require.Error(t, gotErr)
@@ -659,7 +659,7 @@ func TestClient_Start(t *testing.T) {
 		// given
 		wantID := "test-id"
 		wantMethod := "POST"
-		wantPath := fmt.Sprintf("/v%s/containers/%s/start", cargo.APIVersion, wantID)
+		wantPath := fmt.Sprintf("/v%s/containers/%s/start", container.APIVersion, wantID)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, wantMethod, r.Method)
@@ -668,7 +668,7 @@ func TestClient_Start(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 		// when
 		err := sut.Start(context.Background(), wantID)
@@ -681,7 +681,7 @@ func TestClient_Start(t *testing.T) {
 		// given
 		wantID := "test-id"
 		wantMethod := "POST"
-		wantPath := fmt.Sprintf("/v%s/containers/%s/start", cargo.APIVersion, wantID)
+		wantPath := fmt.Sprintf("/v%s/containers/%s/start", container.APIVersion, wantID)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, wantMethod, r.Method)
@@ -690,7 +690,7 @@ func TestClient_Start(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 		// when
 		err := sut.Start(context.Background(), wantID)
@@ -716,7 +716,7 @@ func TestClient_Start(t *testing.T) {
 			//given
 			wantID := "test-id"
 			wantMethod := "POST"
-			wantPath := fmt.Sprintf("/v%s/containers/%s/start", cargo.APIVersion, wantID)
+			wantPath := fmt.Sprintf("/v%s/containers/%s/start", container.APIVersion, wantID)
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, wantMethod, r.Method)
@@ -725,7 +725,7 @@ func TestClient_Start(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 			// when
 			gotErr := sut.Start(context.Background(), wantID)
@@ -741,7 +741,7 @@ func TestClient_Start(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := cargo.NewClientFromRaw(client, "unused-url", slog.Default())
+		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
 
 		// when
 		gotErr := sut.Start(context.Background(), "id")
@@ -759,7 +759,7 @@ func TestClient_Wait(t *testing.T) {
 		wantStatusCode := 44
 		wantID := "test-id"
 		wantMethod := "POST"
-		wantPath := fmt.Sprintf("/v%s/containers/%s/wait", cargo.APIVersion, wantID)
+		wantPath := fmt.Sprintf("/v%s/containers/%s/wait", container.APIVersion, wantID)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, wantMethod, r.Method)
@@ -777,7 +777,7 @@ func TestClient_Wait(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 		// when
 		gotStatusCode, gotErrorMsg, err := sut.Wait(context.Background(), wantID)
@@ -794,7 +794,7 @@ func TestClient_Wait(t *testing.T) {
 		wantErrorMsg := "test error info"
 		wantID := "test-id"
 		wantMethod := "POST"
-		wantPath := fmt.Sprintf("/v%s/containers/%s/wait", cargo.APIVersion, wantID)
+		wantPath := fmt.Sprintf("/v%s/containers/%s/wait", container.APIVersion, wantID)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, wantMethod, r.Method)
@@ -813,7 +813,7 @@ func TestClient_Wait(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 		// when
 		gotStatusCode, gotErrorMsg, err := sut.Wait(context.Background(), wantID)
@@ -828,7 +828,7 @@ func TestClient_Wait(t *testing.T) {
 		// given
 		wantID := "test-id"
 		wantMethod := "POST"
-		wantPath := fmt.Sprintf("/v%s/containers/%s/wait", cargo.APIVersion, wantID)
+		wantPath := fmt.Sprintf("/v%s/containers/%s/wait", container.APIVersion, wantID)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, wantMethod, r.Method)
@@ -842,7 +842,7 @@ func TestClient_Wait(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 		// when
 		_, _, err := sut.Wait(context.Background(), wantID)
@@ -870,7 +870,7 @@ func TestClient_Wait(t *testing.T) {
 			//given
 			wantID := "test-id"
 			wantMethod := "POST"
-			wantPath := fmt.Sprintf("/v%s/containers/%s/wait", cargo.APIVersion, wantID)
+			wantPath := fmt.Sprintf("/v%s/containers/%s/wait", container.APIVersion, wantID)
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, wantMethod, r.Method)
@@ -879,7 +879,7 @@ func TestClient_Wait(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 			// when
 			_, _, gotErr := sut.Wait(context.Background(), wantID)
@@ -895,7 +895,7 @@ func TestClient_Wait(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := cargo.NewClientFromRaw(client, "unused-url", slog.Default())
+		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
 
 		// when
 		_, _, gotErr := sut.Wait(context.Background(), "id")
@@ -914,7 +914,7 @@ func TestClient_GetLogs(t *testing.T) {
 		wantMethod := "GET"
 		wantStdOut := "true"
 		wantStdErr := "true"
-		wantPath := fmt.Sprintf("/v%s/containers/%s/logs", cargo.APIVersion, wantID)
+		wantPath := fmt.Sprintf("/v%s/containers/%s/logs", container.APIVersion, wantID)
 		wantLogs := []string{"first line of logs", "second line of logs"}
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -933,7 +933,7 @@ func TestClient_GetLogs(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 		// when
 		gotLogs, err := sut.Logs(context.Background(), wantID)
@@ -964,7 +964,7 @@ func TestClient_GetLogs(t *testing.T) {
 			wantMethod := "GET"
 			wantStdOut := "true"
 			wantStdErr := "true"
-			wantPath := fmt.Sprintf("/v%s/containers/%s/logs", cargo.APIVersion, wantID)
+			wantPath := fmt.Sprintf("/v%s/containers/%s/logs", container.APIVersion, wantID)
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, wantMethod, r.Method)
@@ -975,7 +975,7 @@ func TestClient_GetLogs(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 			// when
 			_, gotErr := sut.Logs(context.Background(), wantID)
@@ -991,7 +991,7 @@ func TestClient_GetLogs(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := cargo.NewClientFromRaw(client, "unused-url", slog.Default())
+		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
 
 		// when
 		_, gotErr := sut.Logs(context.Background(), "id")
@@ -1007,7 +1007,7 @@ func TestClient_Stop(t *testing.T) {
 		// given
 		wantID := "test-id"
 		wantMethod := "POST"
-		wantPath := fmt.Sprintf("/v%s/containers/%s/stop", cargo.APIVersion, wantID)
+		wantPath := fmt.Sprintf("/v%s/containers/%s/stop", container.APIVersion, wantID)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, wantMethod, r.Method)
@@ -1016,7 +1016,7 @@ func TestClient_Stop(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 		// when
 		err := sut.Stop(context.Background(), wantID)
@@ -1029,7 +1029,7 @@ func TestClient_Stop(t *testing.T) {
 		// given
 		wantID := "test-id"
 		wantMethod := "POST"
-		wantPath := fmt.Sprintf("/v%s/containers/%s/stop", cargo.APIVersion, wantID)
+		wantPath := fmt.Sprintf("/v%s/containers/%s/stop", container.APIVersion, wantID)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, wantMethod, r.Method)
@@ -1038,7 +1038,7 @@ func TestClient_Stop(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 		// when
 		err := sut.Stop(context.Background(), wantID)
@@ -1064,7 +1064,7 @@ func TestClient_Stop(t *testing.T) {
 			//given
 			wantID := "test-id"
 			wantMethod := "POST"
-			wantPath := fmt.Sprintf("/v%s/containers/%s/stop", cargo.APIVersion, wantID)
+			wantPath := fmt.Sprintf("/v%s/containers/%s/stop", container.APIVersion, wantID)
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, wantMethod, r.Method)
@@ -1073,7 +1073,7 @@ func TestClient_Stop(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 			// when
 			gotErr := sut.Stop(context.Background(), wantID)
@@ -1089,7 +1089,7 @@ func TestClient_Stop(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := cargo.NewClientFromRaw(client, "unused-url", slog.Default())
+		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
 
 		// when
 		gotErr := sut.Stop(context.Background(), "id")
@@ -1106,7 +1106,7 @@ func TestClient_Remove(t *testing.T) {
 		wantID := "test-id"
 		wantMethod := "DELETE"
 		wantForceParam := "true"
-		wantPath := fmt.Sprintf("/v%s/containers/%s", cargo.APIVersion, wantID)
+		wantPath := fmt.Sprintf("/v%s/containers/%s", container.APIVersion, wantID)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, wantMethod, r.Method)
@@ -1116,7 +1116,7 @@ func TestClient_Remove(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 		// when
 		err := sut.Remove(context.Background(), wantID)
@@ -1143,7 +1143,7 @@ func TestClient_Remove(t *testing.T) {
 			wantID := "test-id"
 			wantMethod := "DELETE"
 			wantForceParam := "true"
-			wantPath := fmt.Sprintf("/v%s/containers/%s", cargo.APIVersion, wantID)
+			wantPath := fmt.Sprintf("/v%s/containers/%s", container.APIVersion, wantID)
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, wantMethod, r.Method)
@@ -1153,7 +1153,7 @@ func TestClient_Remove(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := cargo.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
 
 			// when
 			gotErr := sut.Remove(context.Background(), wantID)
@@ -1169,7 +1169,7 @@ func TestClient_Remove(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := cargo.NewClientFromRaw(client, "unused-url", slog.Default())
+		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
 
 		// when
 		gotErr := sut.Remove(context.Background(), "id")

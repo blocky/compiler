@@ -165,11 +165,11 @@ func TestClient_Compatible(t *testing.T) {
 	}{
 		"status not ok": {
 			srvResp:   `{"message":"srv err msg"}`,
-			wantError: "receiving api version",
+			wantError: "unknown response: srv err msg",
 		},
 		"incorrect srv error msg": {
 			srvResp:   "incorrect srv error msg",
-			wantError: "decoding api version error",
+			wantError: "decoding api response error",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -258,11 +258,11 @@ func TestClient_ImageExistsByDigest(t *testing.T) {
 	}{
 		"status not ok": {
 			srvResp:   `{"message":"srv err msg"}`,
-			wantError: "receiving image info",
+			wantError: "unknown response: srv err msg",
 		},
 		"incorrect srv error msg": {
 			srvResp:   "incorrect srv error msg",
-			wantError: "decoding image info error",
+			wantError: "decoding api response error",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -432,11 +432,11 @@ func TestClient_PullImage(t *testing.T) {
 	}{
 		"status not ok": {
 			srvResp:   `{"message":"srv err msg"}`,
-			wantError: "requesting image pull",
+			wantError: "unknown response: srv err msg",
 		},
 		"incorrect srv error msg": {
 			srvResp:   "incorrect srv error msg",
-			wantError: "decoding image pull error",
+			wantError: "decoding api response error",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -577,11 +577,11 @@ func TestClient_Create(t *testing.T) {
 	}{
 		"status not ok": {
 			srvResp:   `{"message":"srv err msg"}`,
-			wantError: "requesting container create",
+			wantError: "unknown response: srv err msg",
 		},
 		"incorrect srv error msg": {
 			srvResp:   "incorrect srv error msg",
-			wantError: "decoding container create error",
+			wantError: "decoding api response error",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -705,11 +705,11 @@ func TestClient_Start(t *testing.T) {
 	}{
 		"status not ok": {
 			srvResp:   `{"message":"srv err msg"}`,
-			wantError: "requesting container start",
+			wantError: "unknown response: srv err msg",
 		},
 		"incorrect srv error msg": {
 			srvResp:   "incorrect srv error msg",
-			wantError: "decoding container start error",
+			wantError: "decoding api response error",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -859,11 +859,11 @@ func TestClient_Wait(t *testing.T) {
 	}{
 		"status not ok": {
 			srvResp:   `{"message":"srv err msg"}`,
-			wantError: "requesting container wait",
+			wantError: "unknown response: srv err msg",
 		},
 		"incorrect srv error msg": {
 			srvResp:   "incorrect srv error msg",
-			wantError: "decoding container wait error",
+			wantError: "decoding api response error",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -951,11 +951,11 @@ func TestClient_GetLogs(t *testing.T) {
 	}{
 		"status not ok": {
 			srvResp:   `{"message":"srv err msg"}`,
-			wantError: "requesting container logs",
+			wantError: "unknown response: srv err msg",
 		},
 		"incorrect srv error msg": {
 			srvResp:   "incorrect srv error msg",
-			wantError: "decoding container logs error",
+			wantError: "decoding api response error",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -1053,11 +1053,11 @@ func TestClient_Stop(t *testing.T) {
 	}{
 		"status not ok": {
 			srvResp:   `{"message":"srv err msg"}`,
-			wantError: "requesting container stop",
+			wantError: "unknown response: srv err msg",
 		},
 		"incorrect srv error msg": {
 			srvResp:   "incorrect srv error msg",
-			wantError: "decoding container stop error",
+			wantError: "decoding api response error",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -1131,11 +1131,11 @@ func TestClient_Remove(t *testing.T) {
 	}{
 		"status not ok": {
 			srvResp:   `{"message":"srv err msg"}`,
-			wantError: "requesting container remove",
+			wantError: "unknown response: srv err msg",
 		},
 		"incorrect srv error msg": {
 			srvResp:   "incorrect srv error msg",
-			wantError: "decoding container remove error",
+			wantError: "decoding api response error",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

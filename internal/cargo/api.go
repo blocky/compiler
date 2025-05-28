@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 )
 
@@ -70,29 +71,34 @@ func NewClientWithLogger(log Logger) *Client {
 	)
 }
 
+type ServerMsg struct {
+	Msg string `json:"message"`
+}
+
 func (c *Client) do(
 	ctx context.Context,
 	method string,
 	path string,
 	body any,
+	fwdStatuses ...int,
 ) (*http.Response, error) {
 	var reader io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
 		if err != nil {
-			return nil, fmt.Errorf("marshalling api request body: %v", err)
+			return nil, fmt.Errorf("marshalling api request body: %w", err)
 		}
 		reader = bytes.NewReader(b)
 	}
 
 	baseURL, err := url.Parse(c.BaseURL)
 	if err != nil {
-		return nil, fmt.Errorf("parsing api base URL: %v", err)
+		return nil, fmt.Errorf("parsing api base URL: %w", err)
 	}
 
 	pathURL, err := url.Parse(path)
 	if err != nil {
-		return nil, fmt.Errorf("parsing api path URL: %v", err)
+		return nil, fmt.Errorf("parsing api path URL: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(
@@ -102,14 +108,24 @@ func (c *Client) do(
 		reader,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("making api request: %w", err)
+		return nil, fmt.Errorf("preparing api request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	return c.httpClient.Do(req)
-}
 
-type ServerMsg struct {
-	Msg string `json:"message"`
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("making api request: %w", err)
+	}
+
+	if len(fwdStatuses) > 0 && !slices.Contains(fwdStatuses, resp.StatusCode) {
+		var info ServerMsg
+		if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+			return nil, fmt.Errorf("decoding api response error: %w", err)
+		}
+		return nil, fmt.Errorf("unknown response: %s", info.Msg)
+	}
+
+	return resp, nil
 }
 
 func (c *Client) Compatible(ctx context.Context) (bool, error) {
@@ -118,19 +134,12 @@ func (c *Client) Compatible(ctx context.Context) (bool, error) {
 		"GET",
 		"/version",
 		nil,
+		http.StatusOK,
 	)
 	if err != nil {
 		return false, fmt.Errorf("making api version request: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var info ServerMsg
-		if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-			return false, fmt.Errorf("decoding api version error: %w", err)
-		}
-		return false, fmt.Errorf("receiving api version: %s", info.Msg)
-	}
 
 	var v struct {
 		APIVersion    string `json:"ApiVersion"`
@@ -172,6 +181,8 @@ func (c *Client) ImageExists(
 		"GET",
 		fmt.Sprintf("/v%s/images/%s/json", APIVersion, digest),
 		nil,
+		http.StatusOK,
+		http.StatusNotFound,
 	)
 	if err != nil {
 		return false, fmt.Errorf("making image info request: %w", err)
@@ -184,11 +195,10 @@ func (c *Client) ImageExists(
 	case http.StatusNotFound:
 		return false, nil
 	default:
-		var info ServerMsg
-		if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-			return false, fmt.Errorf("decoding image info error: %w", err)
-		}
-		return false, fmt.Errorf("receiving image info: %s", info.Msg)
+		return false, fmt.Errorf(
+			"unknown image info response code: %d",
+			resp.StatusCode,
+		)
 	}
 }
 
@@ -202,19 +212,12 @@ func (c *Client) PullImage(ctx context.Context, image string) error {
 			url.QueryEscape(image),
 		),
 		nil,
+		http.StatusOK,
 	)
 	if err != nil {
 		return fmt.Errorf("making image pull request: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var info ServerMsg
-		if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-			return fmt.Errorf("decoding image pull error: %w", err)
-		}
-		return fmt.Errorf("requesting image pull: %s", info.Msg)
-	}
 
 	decoder := json.NewDecoder(resp.Body)
 	for decoder.More() {
@@ -223,7 +226,7 @@ func (c *Client) PullImage(ctx context.Context, image string) error {
 			return fmt.Errorf("decoding image pull stream: %w", err)
 		}
 		if errStr, ok := msg["error"]; ok {
-			return fmt.Errorf("pulling image: %v", errStr)
+			return fmt.Errorf("pulling image: %s", errStr)
 		}
 		c.log.Debug(fmt.Sprintf("%s", msg["status"]))
 	}
@@ -275,19 +278,12 @@ func (c *Client) Create(
 			url.QueryEscape(cfg.Name),
 		),
 		NewCreateConfig(cfg),
+		http.StatusCreated,
 	)
 	if err != nil {
 		return "", fmt.Errorf("making container create request: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusCreated {
-		var info ServerMsg
-		if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-			return "", fmt.Errorf("decoding container create error: %w", err)
-		}
-		return "", fmt.Errorf("requesting container create: %s", info.Msg)
-	}
 
 	var res struct {
 		ID string `json:"Id"`
@@ -304,6 +300,8 @@ func (c *Client) Start(ctx context.Context, cID string) error {
 		"POST",
 		fmt.Sprintf("/v%s/containers/%s/start", APIVersion, cID),
 		nil,
+		http.StatusNoContent,
+		http.StatusNotModified,
 	)
 	if err != nil {
 		return fmt.Errorf("making container start request: %w", err)
@@ -316,11 +314,7 @@ func (c *Client) Start(ctx context.Context, cID string) error {
 	case http.StatusNotModified:
 		return fmt.Errorf("container already started '%s'", cID)
 	default:
-		var info ServerMsg
-		if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-			return fmt.Errorf("decoding container start error: %w", err)
-		}
-		return fmt.Errorf("requesting container start: %s", info.Msg)
+		return fmt.Errorf("unknown container start response code: %d", resp.StatusCode)
 	}
 }
 
@@ -330,19 +324,12 @@ func (c *Client) Wait(ctx context.Context, cID string) (int, string, error) {
 		"POST",
 		fmt.Sprintf("/v%s/containers/%s/wait", APIVersion, cID),
 		nil,
+		http.StatusOK,
 	)
 	if err != nil {
 		return 0, "", fmt.Errorf("making container wait request: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var info ServerMsg
-		if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-			return 0, "", fmt.Errorf("decoding container wait error: %w", err)
-		}
-		return 0, "", fmt.Errorf("requesting container wait: %s", info.Msg)
-	}
 
 	var res struct {
 		StatusCode int `json:"StatusCode"`
@@ -369,19 +356,12 @@ func (c *Client) Logs(
 			cID,
 		),
 		nil,
+		http.StatusOK,
 	)
 	if err != nil {
 		return "", fmt.Errorf("making container logs request: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		var info ServerMsg
-		if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-			return "", fmt.Errorf("decoding container logs error: %w", err)
-		}
-		return "", fmt.Errorf("requesting container logs: %s", info.Msg)
-	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -396,6 +376,8 @@ func (c *Client) Stop(ctx context.Context, cID string) error {
 		"POST",
 		fmt.Sprintf("/v%s/containers/%s/stop?t=5", APIVersion, cID),
 		nil,
+		http.StatusNoContent,
+		http.StatusNotModified,
 	)
 	if err != nil {
 		return fmt.Errorf("making container stop request: %w", err)
@@ -408,11 +390,7 @@ func (c *Client) Stop(ctx context.Context, cID string) error {
 	case http.StatusNotModified:
 		return fmt.Errorf("container already stopped '%s'", cID)
 	default:
-		var info ServerMsg
-		if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-			return fmt.Errorf("decoding container stop error: %w", err)
-		}
-		return fmt.Errorf("requesting container stop: %s", info.Msg)
+		return fmt.Errorf("unknown container stop response code: %d", resp.StatusCode)
 	}
 }
 
@@ -422,18 +400,12 @@ func (c *Client) Remove(ctx context.Context, cID string) error {
 		"DELETE",
 		fmt.Sprintf("/v%s/containers/%s?force=true", APIVersion, cID),
 		nil,
+		http.StatusNoContent,
 	)
 	if err != nil {
 		return fmt.Errorf("making container remove request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNoContent {
-		var info ServerMsg
-		if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-			return fmt.Errorf("decoding container remove error: %w", err)
-		}
-		return fmt.Errorf("requesting container remove: %s", info.Msg)
-	}
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -36,20 +37,16 @@ type HTTPDoer interface {
 }
 
 type Client struct {
-	httpClient HTTPDoer
-	BaseURL    string
-	log        Logger
+	Doer    HTTPDoer
+	BaseURL string
+	Log     Logger
 }
 
-func NewClientFromRaw(
-	httpClient HTTPDoer,
-	baseURL string,
-	log Logger,
-) *Client {
+func NewClient() *Client {
 	return &Client{
-		httpClient: httpClient,
-		BaseURL:    baseURL,
-		log:        log,
+		Doer:    newUnixSockHTTPClient(),
+		BaseURL: "http://placeholder.for.unix.sock",
+		Log:     slog.Default(),
 	}
 }
 
@@ -61,14 +58,6 @@ func newUnixSockHTTPClient() *http.Client {
 			},
 		},
 	}
-}
-
-func NewClientWithLogger(log Logger) *Client {
-	return NewClientFromRaw(
-		newUnixSockHTTPClient(),
-		"http://placeholder.for.unix.sock",
-		log,
-	)
 }
 
 type ServerMsg struct {
@@ -112,7 +101,7 @@ func (c *Client) do(
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.Doer.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("making api request: %w", err)
 	}
@@ -228,7 +217,7 @@ func (c *Client) PullImage(ctx context.Context, image string) error {
 		if errStr, ok := msg["error"]; ok {
 			return fmt.Errorf("pulling image: %s", errStr)
 		}
-		c.log.Debug(fmt.Sprintf("%s", msg["status"]))
+		c.Log.Debug(fmt.Sprintf("%s", msg["status"]))
 	}
 	return nil
 }

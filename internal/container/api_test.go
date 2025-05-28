@@ -28,20 +28,10 @@ func (c ClientThatErrors) Do(_ *http.Request) (*http.Response, error) {
 	return nil, errors.New(c.errorMsg)
 }
 
-func TestNewClientFromRaw(t *testing.T) {
+func TestNewClient(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		// when
-		got := container.NewClientFromRaw(http.DefaultClient, "sample-url", slog.Default())
-
-		// then
-		assert.NotEmpty(t, got)
-	})
-}
-
-func TestNewClientWithLogger(t *testing.T) {
-	t.Run("happy path", func(t *testing.T) {
-		// when
-		got := container.NewClientWithLogger(slog.Default())
+		got := container.NewClient()
 
 		// then
 		assert.NotEmpty(t, got)
@@ -98,7 +88,11 @@ func TestClient_Compatible(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := &container.Client{
+				Doer:    ts.Client(),
+				BaseURL: ts.URL,
+				Log:     slog.Default(),
+			}
 
 			// when
 			gotCompatible, err := sut.Compatible(context.Background())
@@ -149,7 +143,11 @@ func TestClient_Compatible(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := &container.Client{
+				Doer:    ts.Client(),
+				BaseURL: ts.URL,
+				Log:     slog.Default(),
+			}
 
 			// when
 			_, gotErr := sut.Compatible(context.Background())
@@ -184,7 +182,11 @@ func TestClient_Compatible(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := &container.Client{
+				Doer:    ts.Client(),
+				BaseURL: ts.URL,
+				Log:     slog.Default(),
+			}
 
 			// when
 			_, gotErr := sut.Compatible(context.Background())
@@ -200,7 +202,12 @@ func TestClient_Compatible(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
+
+		sut := &container.Client{
+			Doer:    client,
+			BaseURL: "unused-url",
+			Log:     slog.Default(),
+		}
 
 		// when
 		_, gotErr := sut.Compatible(context.Background())
@@ -241,7 +248,11 @@ func TestClient_ImageExistsByDigest(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := &container.Client{
+				Doer:    ts.Client(),
+				BaseURL: ts.URL,
+				Log:     slog.Default(),
+			}
 
 			// when
 			gotExists, err := sut.ImageExists(context.Background(), wantDigest)
@@ -278,7 +289,11 @@ func TestClient_ImageExistsByDigest(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := &container.Client{
+				Doer:    ts.Client(),
+				BaseURL: ts.URL,
+				Log:     slog.Default(),
+			}
 
 			// when
 			_, gotErr := sut.ImageExists(context.Background(), wantDigest)
@@ -294,7 +309,12 @@ func TestClient_ImageExistsByDigest(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
+
+		sut := &container.Client{
+			Doer:    client,
+			BaseURL: "unused-url",
+			Log:     slog.Default(),
+		}
 
 		// when
 		_, gotErr := sut.ImageExists(context.Background(), "digest")
@@ -339,7 +359,11 @@ func TestClient_PullImage(t *testing.T) {
 				Once()
 		}
 
-		sut := container.NewClientFromRaw(ts.Client(), ts.URL, mockLogger)
+		sut := &container.Client{
+			Doer:    ts.Client(),
+			BaseURL: ts.URL,
+			Log:     mockLogger,
+		}
 
 		// when
 		err := sut.PullImage(context.Background(), wantImage)
@@ -383,7 +407,11 @@ func TestClient_PullImage(t *testing.T) {
 				Once()
 		}
 
-		sut := container.NewClientFromRaw(ts.Client(), ts.URL, mockLogger)
+		sut := &container.Client{
+			Doer:    ts.Client(),
+			BaseURL: ts.URL,
+			Log:     mockLogger,
+		}
 
 		// when
 		err := sut.PullImage(context.Background(), wantImage)
@@ -416,7 +444,11 @@ func TestClient_PullImage(t *testing.T) {
 		mockLogger := mocks.NewContainerLogger(t)
 		mockLogger.AssertNotCalled(t, "Debug", mock.Anything)
 
-		sut := container.NewClientFromRaw(ts.Client(), ts.URL, mockLogger)
+		sut := &container.Client{
+			Doer:    ts.Client(),
+			BaseURL: ts.URL,
+			Log:     mockLogger,
+		}
 
 		// when
 		err := sut.PullImage(context.Background(), wantImage)
@@ -453,7 +485,11 @@ func TestClient_PullImage(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := &container.Client{
+				Doer:    ts.Client(),
+				BaseURL: ts.URL,
+				Log:     slog.Default(),
+			}
 
 			// when
 			gotErr := sut.PullImage(context.Background(), wantImage)
@@ -469,7 +505,12 @@ func TestClient_PullImage(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
+
+		sut := &container.Client{
+			Doer:    client,
+			BaseURL: "unused-url",
+			Log:     slog.Default(),
+		}
 
 		// when
 		gotErr := sut.PullImage(context.Background(), "image")
@@ -561,7 +602,11 @@ func TestClient_Create(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := &container.Client{
+			Doer:    ts.Client(),
+			BaseURL: ts.URL,
+			Log:     slog.Default(),
+		}
 
 		// when
 		gotID, err := sut.Create(context.Background(), wantCfg)
@@ -598,7 +643,11 @@ func TestClient_Create(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := &container.Client{
+				Doer:    ts.Client(),
+				BaseURL: ts.URL,
+				Log:     slog.Default(),
+			}
 
 			// when
 			_, gotErr := sut.Create(context.Background(), wantCfg)
@@ -627,7 +676,11 @@ func TestClient_Create(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := &container.Client{
+			Doer:    ts.Client(),
+			BaseURL: ts.URL,
+			Log:     slog.Default(),
+		}
 
 		// when
 		_, err := sut.Create(context.Background(), wantCfg)
@@ -642,7 +695,12 @@ func TestClient_Create(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
+
+		sut := &container.Client{
+			Doer:    client,
+			BaseURL: "unused-url",
+			Log:     slog.Default(),
+		}
 
 		// when
 		_, gotErr := sut.Create(context.Background(), container.Config{})
@@ -668,7 +726,11 @@ func TestClient_Start(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := &container.Client{
+			Doer:    ts.Client(),
+			BaseURL: ts.URL,
+			Log:     slog.Default(),
+		}
 
 		// when
 		err := sut.Start(context.Background(), wantID)
@@ -690,7 +752,11 @@ func TestClient_Start(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := &container.Client{
+			Doer:    ts.Client(),
+			BaseURL: ts.URL,
+			Log:     slog.Default(),
+		}
 
 		// when
 		err := sut.Start(context.Background(), wantID)
@@ -725,7 +791,11 @@ func TestClient_Start(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := &container.Client{
+				Doer:    ts.Client(),
+				BaseURL: ts.URL,
+				Log:     slog.Default(),
+			}
 
 			// when
 			gotErr := sut.Start(context.Background(), wantID)
@@ -741,7 +811,12 @@ func TestClient_Start(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
+
+		sut := &container.Client{
+			Doer:    client,
+			BaseURL: "unused-url",
+			Log:     slog.Default(),
+		}
 
 		// when
 		gotErr := sut.Start(context.Background(), "id")
@@ -777,7 +852,11 @@ func TestClient_Wait(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := &container.Client{
+			Doer:    ts.Client(),
+			BaseURL: ts.URL,
+			Log:     slog.Default(),
+		}
 
 		// when
 		gotStatusCode, gotErrorMsg, err := sut.Wait(context.Background(), wantID)
@@ -813,7 +892,11 @@ func TestClient_Wait(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := &container.Client{
+			Doer:    ts.Client(),
+			BaseURL: ts.URL,
+			Log:     slog.Default(),
+		}
 
 		// when
 		gotStatusCode, gotErrorMsg, err := sut.Wait(context.Background(), wantID)
@@ -842,7 +925,11 @@ func TestClient_Wait(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := &container.Client{
+			Doer:    ts.Client(),
+			BaseURL: ts.URL,
+			Log:     slog.Default(),
+		}
 
 		// when
 		_, _, err := sut.Wait(context.Background(), wantID)
@@ -879,7 +966,11 @@ func TestClient_Wait(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := &container.Client{
+				Doer:    ts.Client(),
+				BaseURL: ts.URL,
+				Log:     slog.Default(),
+			}
 
 			// when
 			_, _, gotErr := sut.Wait(context.Background(), wantID)
@@ -895,7 +986,12 @@ func TestClient_Wait(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
+
+		sut := &container.Client{
+			Doer:    client,
+			BaseURL: "unused-url",
+			Log:     slog.Default(),
+		}
 
 		// when
 		_, _, gotErr := sut.Wait(context.Background(), "id")
@@ -933,7 +1029,11 @@ func TestClient_GetLogs(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := &container.Client{
+			Doer:    ts.Client(),
+			BaseURL: ts.URL,
+			Log:     slog.Default(),
+		}
 
 		// when
 		gotLogs, err := sut.Logs(context.Background(), wantID)
@@ -975,7 +1075,11 @@ func TestClient_GetLogs(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := &container.Client{
+				Doer:    ts.Client(),
+				BaseURL: ts.URL,
+				Log:     slog.Default(),
+			}
 
 			// when
 			_, gotErr := sut.Logs(context.Background(), wantID)
@@ -991,7 +1095,12 @@ func TestClient_GetLogs(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
+
+		sut := &container.Client{
+			Doer:    client,
+			BaseURL: "unused-url",
+			Log:     slog.Default(),
+		}
 
 		// when
 		_, gotErr := sut.Logs(context.Background(), "id")
@@ -1016,7 +1125,11 @@ func TestClient_Stop(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := &container.Client{
+			Doer:    ts.Client(),
+			BaseURL: ts.URL,
+			Log:     slog.Default(),
+		}
 
 		// when
 		err := sut.Stop(context.Background(), wantID)
@@ -1038,7 +1151,11 @@ func TestClient_Stop(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := &container.Client{
+			Doer:    ts.Client(),
+			BaseURL: ts.URL,
+			Log:     slog.Default(),
+		}
 
 		// when
 		err := sut.Stop(context.Background(), wantID)
@@ -1073,7 +1190,11 @@ func TestClient_Stop(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := &container.Client{
+				Doer:    ts.Client(),
+				BaseURL: ts.URL,
+				Log:     slog.Default(),
+			}
 
 			// when
 			gotErr := sut.Stop(context.Background(), wantID)
@@ -1089,7 +1210,12 @@ func TestClient_Stop(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
+
+		sut := &container.Client{
+			Doer:    client,
+			BaseURL: "unused-url",
+			Log:     slog.Default(),
+		}
 
 		// when
 		gotErr := sut.Stop(context.Background(), "id")
@@ -1116,7 +1242,11 @@ func TestClient_Remove(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+		sut := &container.Client{
+			Doer:    ts.Client(),
+			BaseURL: ts.URL,
+			Log:     slog.Default(),
+		}
 
 		// when
 		err := sut.Remove(context.Background(), wantID)
@@ -1153,7 +1283,11 @@ func TestClient_Remove(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := container.NewClientFromRaw(ts.Client(), ts.URL, slog.Default())
+			sut := &container.Client{
+				Doer:    ts.Client(),
+				BaseURL: ts.URL,
+				Log:     slog.Default(),
+			}
 
 			// when
 			gotErr := sut.Remove(context.Background(), wantID)
@@ -1169,7 +1303,12 @@ func TestClient_Remove(t *testing.T) {
 		client := ClientThatErrors{
 			errorMsg: wantError,
 		}
-		sut := container.NewClientFromRaw(client, "unused-url", slog.Default())
+
+		sut := &container.Client{
+			Doer:    client,
+			BaseURL: "unused-url",
+			Log:     slog.Default(),
+		}
 
 		// when
 		gotErr := sut.Remove(context.Background(), "id")

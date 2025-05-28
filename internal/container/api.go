@@ -30,23 +30,32 @@ type Config struct {
 
 type Logger interface {
 	Debug(string, ...any)
+	Warn(string, ...any)
 }
 
 type HTTPDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-type Client struct {
+type APIClient struct {
 	Doer    HTTPDoer
 	BaseURL string
 	Log     Logger
 }
 
-func NewClient() *Client {
-	return &Client{
+func NewAPIClient() *APIClient {
+	return &APIClient{
 		Doer:    newUnixSockHTTPClient(),
 		BaseURL: "http://placeholder.for.unix.sock",
 		Log:     slog.Default(),
+	}
+}
+
+func NewAPIClientWithLogger(log Logger) *APIClient {
+	return &APIClient{
+		Doer:    newUnixSockHTTPClient(),
+		BaseURL: "http://placeholder.for.unix.sock",
+		Log:     log,
 	}
 }
 
@@ -64,7 +73,7 @@ type ServerMsg struct {
 	Msg string `json:"message"`
 }
 
-func (c *Client) do(
+func (c *APIClient) do(
 	ctx context.Context,
 	method string,
 	path string,
@@ -117,7 +126,7 @@ func (c *Client) do(
 	return resp, nil
 }
 
-func (c *Client) Compatible(ctx context.Context) (bool, error) {
+func (c *APIClient) Compatible(ctx context.Context) (bool, error) {
 	resp, err := c.do(
 		ctx,
 		"GET",
@@ -161,7 +170,7 @@ func (c *Client) Compatible(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (c *Client) ImageExists(
+func (c *APIClient) ImageExists(
 	ctx context.Context,
 	digest string,
 ) (bool, error) {
@@ -191,7 +200,7 @@ func (c *Client) ImageExists(
 	}
 }
 
-func (c *Client) PullImage(ctx context.Context, image string) error {
+func (c *APIClient) PullImage(ctx context.Context, image string) error {
 	resp, err := c.do(
 		ctx,
 		"POST",
@@ -254,7 +263,7 @@ func NewCreateConfig(in Config) CreateConfig {
 	}
 }
 
-func (c *Client) Create(
+func (c *APIClient) Create(
 	ctx context.Context,
 	cfg Config,
 ) (string, error) {
@@ -283,7 +292,7 @@ func (c *Client) Create(
 	return res.ID, nil
 }
 
-func (c *Client) Start(ctx context.Context, cID string) error {
+func (c *APIClient) Start(ctx context.Context, cID string) error {
 	resp, err := c.do(
 		ctx,
 		"POST",
@@ -307,7 +316,7 @@ func (c *Client) Start(ctx context.Context, cID string) error {
 	}
 }
 
-func (c *Client) Wait(ctx context.Context, cID string) (int, string, error) {
+func (c *APIClient) Wait(ctx context.Context, cID string) (int, string, error) {
 	resp, err := c.do(
 		ctx,
 		"POST",
@@ -332,7 +341,7 @@ func (c *Client) Wait(ctx context.Context, cID string) (int, string, error) {
 	return res.StatusCode, res.Error.Message, nil
 }
 
-func (c *Client) Logs(
+func (c *APIClient) Logs(
 	ctx context.Context,
 	cID string,
 ) (string, error) {
@@ -359,7 +368,7 @@ func (c *Client) Logs(
 	return string(body), nil
 }
 
-func (c *Client) Stop(ctx context.Context, cID string) error {
+func (c *APIClient) Stop(ctx context.Context, cID string) error {
 	resp, err := c.do(
 		ctx,
 		"POST",
@@ -383,7 +392,7 @@ func (c *Client) Stop(ctx context.Context, cID string) error {
 	}
 }
 
-func (c *Client) Remove(ctx context.Context, cID string) error {
+func (c *APIClient) Remove(ctx context.Context, cID string) error {
 	resp, err := c.do(
 		ctx,
 		"DELETE",

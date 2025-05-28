@@ -31,7 +31,7 @@ func (c ClientThatErrors) Do(_ *http.Request) (*http.Response, error) {
 func TestNewClient(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		// when
-		got := container.NewClient()
+		got := container.NewAPIClient()
 
 		// then
 		assert.NotEmpty(t, got)
@@ -88,7 +88,7 @@ func TestClient_Compatible(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := &container.Client{
+			sut := &container.APIClient{
 				Doer:    ts.Client(),
 				BaseURL: ts.URL,
 				Log:     slog.Default(),
@@ -143,7 +143,7 @@ func TestClient_Compatible(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := &container.Client{
+			sut := &container.APIClient{
 				Doer:    ts.Client(),
 				BaseURL: ts.URL,
 				Log:     slog.Default(),
@@ -182,7 +182,7 @@ func TestClient_Compatible(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := &container.Client{
+			sut := &container.APIClient{
 				Doer:    ts.Client(),
 				BaseURL: ts.URL,
 				Log:     slog.Default(),
@@ -203,7 +203,7 @@ func TestClient_Compatible(t *testing.T) {
 			errorMsg: wantError,
 		}
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    client,
 			BaseURL: "unused-url",
 			Log:     slog.Default(),
@@ -248,7 +248,7 @@ func TestClient_ImageExistsByDigest(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := &container.Client{
+			sut := &container.APIClient{
 				Doer:    ts.Client(),
 				BaseURL: ts.URL,
 				Log:     slog.Default(),
@@ -289,7 +289,7 @@ func TestClient_ImageExistsByDigest(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := &container.Client{
+			sut := &container.APIClient{
 				Doer:    ts.Client(),
 				BaseURL: ts.URL,
 				Log:     slog.Default(),
@@ -310,7 +310,7 @@ func TestClient_ImageExistsByDigest(t *testing.T) {
 			errorMsg: wantError,
 		}
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    client,
 			BaseURL: "unused-url",
 			Log:     slog.Default(),
@@ -359,7 +359,7 @@ func TestClient_PullImage(t *testing.T) {
 				Once()
 		}
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
 			Log:     mockLogger,
@@ -407,7 +407,7 @@ func TestClient_PullImage(t *testing.T) {
 				Once()
 		}
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
 			Log:     mockLogger,
@@ -444,7 +444,7 @@ func TestClient_PullImage(t *testing.T) {
 		mockLogger := mocks.NewContainerLogger(t)
 		mockLogger.AssertNotCalled(t, "Debug", mock.Anything)
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
 			Log:     mockLogger,
@@ -485,7 +485,7 @@ func TestClient_PullImage(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := &container.Client{
+			sut := &container.APIClient{
 				Doer:    ts.Client(),
 				BaseURL: ts.URL,
 				Log:     slog.Default(),
@@ -506,7 +506,7 @@ func TestClient_PullImage(t *testing.T) {
 			errorMsg: wantError,
 		}
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    client,
 			BaseURL: "unused-url",
 			Log:     slog.Default(),
@@ -602,7 +602,7 @@ func TestClient_Create(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
 			Log:     slog.Default(),
@@ -643,7 +643,7 @@ func TestClient_Create(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := &container.Client{
+			sut := &container.APIClient{
 				Doer:    ts.Client(),
 				BaseURL: ts.URL,
 				Log:     slog.Default(),
@@ -676,7 +676,7 @@ func TestClient_Create(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
 			Log:     slog.Default(),
@@ -696,7 +696,7 @@ func TestClient_Create(t *testing.T) {
 			errorMsg: wantError,
 		}
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    client,
 			BaseURL: "unused-url",
 			Log:     slog.Default(),
@@ -726,7 +726,7 @@ func TestClient_Start(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
 			Log:     slog.Default(),
@@ -752,7 +752,7 @@ func TestClient_Start(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
 			Log:     slog.Default(),
@@ -791,7 +791,7 @@ func TestClient_Start(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := &container.Client{
+			sut := &container.APIClient{
 				Doer:    ts.Client(),
 				BaseURL: ts.URL,
 				Log:     slog.Default(),
@@ -812,7 +812,7 @@ func TestClient_Start(t *testing.T) {
 			errorMsg: wantError,
 		}
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    client,
 			BaseURL: "unused-url",
 			Log:     slog.Default(),
@@ -852,7 +852,7 @@ func TestClient_Wait(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
 			Log:     slog.Default(),
@@ -892,7 +892,7 @@ func TestClient_Wait(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
 			Log:     slog.Default(),
@@ -925,7 +925,7 @@ func TestClient_Wait(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
 			Log:     slog.Default(),
@@ -966,7 +966,7 @@ func TestClient_Wait(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := &container.Client{
+			sut := &container.APIClient{
 				Doer:    ts.Client(),
 				BaseURL: ts.URL,
 				Log:     slog.Default(),
@@ -987,7 +987,7 @@ func TestClient_Wait(t *testing.T) {
 			errorMsg: wantError,
 		}
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    client,
 			BaseURL: "unused-url",
 			Log:     slog.Default(),
@@ -1029,7 +1029,7 @@ func TestClient_GetLogs(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
 			Log:     slog.Default(),
@@ -1075,7 +1075,7 @@ func TestClient_GetLogs(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := &container.Client{
+			sut := &container.APIClient{
 				Doer:    ts.Client(),
 				BaseURL: ts.URL,
 				Log:     slog.Default(),
@@ -1096,7 +1096,7 @@ func TestClient_GetLogs(t *testing.T) {
 			errorMsg: wantError,
 		}
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    client,
 			BaseURL: "unused-url",
 			Log:     slog.Default(),
@@ -1125,7 +1125,7 @@ func TestClient_Stop(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
 			Log:     slog.Default(),
@@ -1151,7 +1151,7 @@ func TestClient_Stop(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
 			Log:     slog.Default(),
@@ -1190,7 +1190,7 @@ func TestClient_Stop(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := &container.Client{
+			sut := &container.APIClient{
 				Doer:    ts.Client(),
 				BaseURL: ts.URL,
 				Log:     slog.Default(),
@@ -1211,7 +1211,7 @@ func TestClient_Stop(t *testing.T) {
 			errorMsg: wantError,
 		}
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    client,
 			BaseURL: "unused-url",
 			Log:     slog.Default(),
@@ -1242,7 +1242,7 @@ func TestClient_Remove(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
 			Log:     slog.Default(),
@@ -1283,7 +1283,7 @@ func TestClient_Remove(t *testing.T) {
 			}))
 			defer ts.Close()
 
-			sut := &container.Client{
+			sut := &container.APIClient{
 				Doer:    ts.Client(),
 				BaseURL: ts.URL,
 				Log:     slog.Default(),
@@ -1304,7 +1304,7 @@ func TestClient_Remove(t *testing.T) {
 			errorMsg: wantError,
 		}
 
-		sut := &container.Client{
+		sut := &container.APIClient{
 			Doer:    client,
 			BaseURL: "unused-url",
 			Log:     slog.Default(),

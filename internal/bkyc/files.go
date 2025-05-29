@@ -16,11 +16,8 @@ func FindGoProjectRoot(path string) (string, error) {
 		return "", fmt.Errorf("getting os stats: %w", err)
 	}
 
-	var currPath string
-	switch stat.IsDir() {
-	case true:
-		currPath = absPath
-	case false:
+	currPath := absPath
+	if !stat.IsDir() {
 		currPath = filepath.Dir(absPath)
 	}
 

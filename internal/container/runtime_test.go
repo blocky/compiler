@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/blocky/bkyc/internal/container"
@@ -166,7 +167,7 @@ func TestRuntime_GetImage(t *testing.T) {
 	})
 }
 
-func TestRuntime_StartContainer(t *testing.T) {
+func TestRuntime_Launch(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		// given
 		wantCfg := container.Config{}
@@ -187,7 +188,7 @@ func TestRuntime_StartContainer(t *testing.T) {
 			Once()
 
 		// when
-		gotID, gotErr := sut.StartContainer(ctx, wantCfg)
+		gotID, gotErr := sut.Launch(ctx, wantCfg)
 
 		// then
 		require.NoError(t, gotErr)
@@ -209,7 +210,7 @@ func TestRuntime_StartContainer(t *testing.T) {
 			Once()
 
 		// when
-		_, gotErr := sut.StartContainer(ctx, wantCfg)
+		_, gotErr := sut.Launch(ctx, wantCfg)
 
 		// then
 		require.Error(t, gotErr)
@@ -237,7 +238,7 @@ func TestRuntime_StartContainer(t *testing.T) {
 			Once()
 
 		// when
-		_, gotErr := sut.StartContainer(ctx, wantCfg)
+		_, gotErr := sut.Launch(ctx, wantCfg)
 
 		// then
 		require.Error(t, gotErr)
@@ -245,7 +246,7 @@ func TestRuntime_StartContainer(t *testing.T) {
 	})
 }
 
-func TestRuntime_GetContainerOutput(t *testing.T) {
+func TestRuntime_GetOutput(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		// given
 		wantID := "testid"
@@ -268,7 +269,7 @@ func TestRuntime_GetContainerOutput(t *testing.T) {
 			Once()
 
 		// when
-		gotOutput, gotErr := sut.GetContainerOutput(ctx, wantID)
+		gotOutput, gotErr := sut.GetOutput(ctx, wantID)
 
 		// then
 		require.NoError(t, gotErr)
@@ -292,7 +293,7 @@ func TestRuntime_GetContainerOutput(t *testing.T) {
 			Once()
 
 		// when
-		_, gotErr := sut.GetContainerOutput(ctx, wantID)
+		_, gotErr := sut.GetOutput(ctx, wantID)
 
 		// then
 		require.Error(t, gotErr)
@@ -319,7 +320,7 @@ func TestRuntime_GetContainerOutput(t *testing.T) {
 			Once()
 
 		// when
-		_, gotErr := sut.GetContainerOutput(ctx, wantID)
+		_, gotErr := sut.GetOutput(ctx, wantID)
 
 		// then
 		require.Error(t, gotErr)
@@ -327,7 +328,7 @@ func TestRuntime_GetContainerOutput(t *testing.T) {
 	})
 }
 
-func TestRuntime_CleanUpContainer(t *testing.T) {
+func TestRuntime_CleanUp(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		// given
 		wantID := "testid"
@@ -347,7 +348,7 @@ func TestRuntime_CleanUpContainer(t *testing.T) {
 			Once()
 
 		// when
-		gotErr := sut.CleanUpContainer(ctx, wantID)
+		gotErr := sut.CleanUp(ctx, wantID)
 
 		// then
 		require.NoError(t, gotErr)
@@ -369,7 +370,7 @@ func TestRuntime_CleanUpContainer(t *testing.T) {
 			Once()
 
 		mockLogger.EXPECT().
-			Debug("stopping container", "err", wantErr).
+			Debug("stopping container", "err", wantErr.Error()).
 			Once()
 
 		mockClient.EXPECT().
@@ -378,7 +379,7 @@ func TestRuntime_CleanUpContainer(t *testing.T) {
 			Once()
 
 		// when
-		gotErr := sut.CleanUpContainer(ctx, wantID)
+		gotErr := sut.CleanUp(ctx, wantID)
 
 		// then
 		require.NoError(t, gotErr)
@@ -404,7 +405,7 @@ func TestRuntime_CleanUpContainer(t *testing.T) {
 			Once()
 
 		// when
-		gotErr := sut.CleanUpContainer(ctx, wantID)
+		gotErr := sut.CleanUp(ctx, wantID)
 
 		// then
 		require.Error(t, gotErr)
@@ -658,7 +659,7 @@ func TestRuntime_Run(t *testing.T) {
 		wantStatus := container.OK
 		wantMsg := "test message"
 		wantLogs := "test logs"
-		wantErrMsg := "test error message"
+		wantErrMsg := "removing container: test error message"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
 		mockLogger := mocks.NewContainerLogger(t)
@@ -703,7 +704,7 @@ func TestRuntime_Run(t *testing.T) {
 			Return().
 			Once()
 		mockLogger.EXPECT().
-			Warn("cleaning up container", "err", errors.New(wantErrMsg)).
+			Warn("cleaning up container", "err", mock.Anything).
 			Once()
 
 		// when

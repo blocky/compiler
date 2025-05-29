@@ -9,11 +9,7 @@ import (
 )
 
 func containerRuntimeAvailable() bool {
-	cmd := exec.Command("docker", "version")
-	if err := cmd.Run(); err != nil {
-		return false
-	}
-	return true
+	return exec.Command("docker", "version").Run() == nil
 }
 
 func TestMain(m *testing.M) {

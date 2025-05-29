@@ -4,13 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
-func TestIntegrationHelloWorld(t *testing.T) {
-	assert.True(t, true)
+func containerRuntimeAvailable() bool {
+	return exec.Command("docker", "version").Run() == nil
 }
 
 func TestMain(m *testing.M) {
@@ -21,5 +20,9 @@ func TestMain(m *testing.M) {
 		return
 	}
 
+	if !containerRuntimeAvailable() {
+		fmt.Fprintln(os.Stderr, "container runtime not available.")
+		os.Exit(1)
+	}
 	m.Run()
 }

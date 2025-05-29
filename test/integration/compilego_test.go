@@ -126,8 +126,8 @@ func Test_CompileGo(t *testing.T) {
 		assert.ErrorContains(t, gotErr, "running compilation")
 		assert.ErrorContains(t, gotErr, "running container")
 		assert.ErrorContains(t, gotErr, "status: '1'")
-		assert.ErrorContains(t, gotErr, "main.go:11:7: expected ';', found file")
-		assert.ErrorContains(t, gotErr, "main.go:12:3: expected '}', found 'EOF'")
+		assert.ErrorContains(t, gotErr, "main.go:9:7: expected ';', found file")
+		assert.ErrorContains(t, gotErr, "main.go:10:3: expected '}', found 'EOF'")
 
 		assertDirEmpty(t, outDir)
 	})

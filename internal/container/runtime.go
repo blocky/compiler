@@ -48,28 +48,28 @@ func (r *Runtime) GetImage(
 ) error {
 	isLocal, err := r.client.ImageExists(ctx, image)
 	if err != nil {
-		return err
+		return fmt.Errorf("checking image '%s': %w", image, err)
 	}
 	if !isLocal {
 		r.log.Debug("Image not available, pulling", "image", image)
 		err := r.client.PullImage(ctx, image)
 		if err != nil {
-			return err
+			return fmt.Errorf("pulling image '%s': %w", image, err)
 		}
 	}
 	return nil
 }
 
-func (r *Runtime) StartContainer(
+func (r *Runtime) Launch(
 	ctx context.Context,
 	cfg Config,
 ) (string, error) {
 	cID, err := r.client.Create(ctx, cfg)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("creating container: %w", err)
 	}
 	if err := r.client.Start(ctx, cID); err != nil {
-		return "", err
+		return "", fmt.Errorf("starting container: %w", err)
 	}
 	return cID, nil
 }
@@ -80,18 +80,18 @@ type Output struct {
 	Logs     string
 }
 
-func (r *Runtime) GetContainerOutput(
+func (r *Runtime) GetOutput(
 	ctx context.Context,
 	cID string,
 ) (Output, error) {
 	zeroRet := Output{}
 	status, errMsg, err := r.client.Wait(ctx, cID)
 	if err != nil {
-		return zeroRet, err
+		return zeroRet, fmt.Errorf("waiting for container '%s': %w", cID, err)
 	}
 	logs, err := r.client.Logs(ctx, cID)
 	if err != nil {
-		return zeroRet, err
+		return zeroRet, fmt.Errorf("getting container logs: %w", err)
 	}
 	return Output{
 		Status:   status,
@@ -100,15 +100,15 @@ func (r *Runtime) GetContainerOutput(
 	}, nil
 }
 
-func (r *Runtime) CleanUpContainer(
+func (r *Runtime) CleanUp(
 	ctx context.Context,
 	cID string,
 ) error {
 	if err := r.client.Stop(ctx, cID); err != nil {
-		r.log.Debug("stopping container", "err", err)
+		r.log.Debug("stopping container", "err", err.Error())
 	}
 	if err := r.client.Remove(ctx, cID); err != nil {
-		return err
+		return fmt.Errorf("removing container: %w", err)
 	}
 	return nil
 }
@@ -119,32 +119,32 @@ func (r *Runtime) Run(
 ) (Output, error) {
 	zeroRet := Output{}
 	ok, err := r.Compatible(ctx)
-	if err != nil {
+	switch {
+	case err != nil:
 		return zeroRet, err
-	}
-	if !ok {
+	case !ok:
 		return zeroRet, fmt.Errorf("runtime not compatible")
 	}
 
 	err = r.GetImage(ctx, cfg.Image)
 	if err != nil {
-		return zeroRet, err
+		return zeroRet, fmt.Errorf("getting image '%s': %w", cfg.Image, err)
 	}
 
-	cID, err := r.StartContainer(ctx, cfg)
+	cID, err := r.Launch(ctx, cfg)
 	if err != nil {
 		return zeroRet, err
 	}
 	defer func() {
-		err := r.CleanUpContainer(ctx, cID)
+		err := r.CleanUp(ctx, cID)
 		if err != nil {
 			r.log.Warn("cleaning up container", "err", err)
 		}
 	}()
 
-	output, err := r.GetContainerOutput(ctx, cID)
+	output, err := r.GetOutput(ctx, cID)
 	if err != nil {
-		return zeroRet, err
+		return zeroRet, fmt.Errorf("getting container output: %w", err)
 	}
 
 	r.log.Debug(output.Logs)

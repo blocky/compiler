@@ -10,7 +10,7 @@ import (
 
 var cliCmd = flag.String(
 	"cli",
-	"go run ../../cmd/cli/...",
+	"go run ../../cmd/bky-c/...",
 	"command to run tested CLI",
 )
 

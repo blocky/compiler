@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/blocky/bkyc/cmd/cli/cmd"
+	"github.com/blocky/bkyc/cmd/bky-c/cmd"
 )
 
 func main() {

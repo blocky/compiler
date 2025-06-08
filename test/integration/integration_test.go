@@ -1,4 +1,4 @@
-package integration_test
+package integration
 
 import (
 	"flag"
@@ -6,12 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"testing"
-)
-
-var cliCmd = flag.String(
-	"cli",
-	"go run ../../cmd/bky-c/...",
-	"command to run tested CLI",
 )
 
 func containerRuntimeAvailable() bool {

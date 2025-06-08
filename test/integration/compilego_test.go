@@ -1,4 +1,4 @@
-package integration_test
+package integration
 
 import (
 	"bytes"
@@ -93,7 +93,7 @@ func Test_CompileGo(t *testing.T) {
 		assert.NoError(t, gotErr)
 		assertFilesEqual(
 			t,
-			"./testdata/hello-world-hash-unvendored-go/out/want.wasm",
+			"./testdata/hello-world-hash-unvendored-go/want/x.wasm",
 			outPath,
 		)
 	})

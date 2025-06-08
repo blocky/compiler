@@ -49,4 +49,4 @@ jobs:
         gh-access-token: ${{ secrets.GH_ACCESS_TOKEN }}
 
     - name: Run Integration Tests
-      run: make test-integration
+      run: make test-integration-dind

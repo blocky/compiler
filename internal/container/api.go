@@ -344,14 +344,18 @@ func (c *APIClient) Wait(ctx context.Context, cID string) (int, string, error) {
 func (c *APIClient) Logs(
 	ctx context.Context,
 	cID string,
+	stdout bool,
+	stderr bool,
 ) (string, error) {
 	resp, err := c.do(
 		ctx,
 		"GET",
 		fmt.Sprintf(
-			"/v%s/containers/%s/logs?stdout=true&stderr=true",
+			"/v%s/containers/%s/logs?stdout=%v&stderr=%v",
 			APIVersion,
 			cID,
+			stdout,
+			stderr,
 		),
 		nil,
 		http.StatusOK,

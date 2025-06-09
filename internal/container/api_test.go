@@ -1003,7 +1003,7 @@ func TestClient_Wait(t *testing.T) {
 	})
 }
 
-func TestClient_GetLogs(t *testing.T) {
+func TestClient_Logs(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		// given
 		wantID := "test-id"
@@ -1036,7 +1036,7 @@ func TestClient_GetLogs(t *testing.T) {
 		}
 
 		// when
-		gotLogs, err := sut.Logs(context.Background(), wantID)
+		gotLogs, err := sut.Logs(context.Background(), wantID, true, true)
 
 		// then
 		require.NoError(t, err)
@@ -1082,7 +1082,7 @@ func TestClient_GetLogs(t *testing.T) {
 			}
 
 			// when
-			_, gotErr := sut.Logs(context.Background(), wantID)
+			_, gotErr := sut.Logs(context.Background(), wantID, true, true)
 
 			// then
 			assert.ErrorContains(t, gotErr, tc.wantError)
@@ -1103,7 +1103,7 @@ func TestClient_GetLogs(t *testing.T) {
 		}
 
 		// when
-		_, gotErr := sut.Logs(context.Background(), "id")
+		_, gotErr := sut.Logs(context.Background(), "id", true, true)
 
 		// then
 		require.Error(t, gotErr)

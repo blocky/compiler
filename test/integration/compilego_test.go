@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/blocky/bkyc/internal/bkyc"
-	"github.com/blocky/bkyc/internal/container"
+	"github.com/blocky/compiler/internal/bkyc"
+	"github.com/blocky/compiler/internal/container"
 )
 
 func copyTestData(t *testing.T, srcPath string, dstPath string) {

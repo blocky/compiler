@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/blocky/bkyc/internal/container"
+	"github.com/blocky/compiler/internal/container"
 )
 
 type ContainerRunner interface {

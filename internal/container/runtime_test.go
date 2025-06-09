@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/blocky/bkyc/internal/container"
-	"github.com/blocky/bkyc/mocks"
+	"github.com/blocky/compiler/internal/container"
+	"github.com/blocky/compiler/mocks"
 )
 
 func TestRuntime_Compatible(t *testing.T) {

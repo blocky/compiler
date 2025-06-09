@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	container "github.com/blocky/bkyc/internal/container"
+	container "github.com/blocky/compiler/internal/container"
 
 	mock "github.com/stretchr/testify/mock"
 )

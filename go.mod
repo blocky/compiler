@@ -1,4 +1,4 @@
-module github.com/blocky/bkyc
+module github.com/blocky/compiler
 
 go 1.23.7
 

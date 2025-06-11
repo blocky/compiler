@@ -193,32 +193,39 @@ func (_c *ContainerClient_ImageExists_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// Logs provides a mock function with given fields: _a0, _a1, _a2, _a3
-func (_m *ContainerClient) Logs(_a0 context.Context, _a1 string, _a2 bool, _a3 bool) (string, error) {
-	ret := _m.Called(_a0, _a1, _a2, _a3)
+// Logs provides a mock function with given fields: _a0, _a1
+func (_m *ContainerClient) Logs(_a0 context.Context, _a1 string) (string, string, error) {
+	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Logs")
 	}
 
 	var r0 string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, bool, bool) (string, error)); ok {
-		return rf(_a0, _a1, _a2, _a3)
+	var r1 string
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (string, string, error)); ok {
+		return rf(_a0, _a1)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, bool, bool) string); ok {
-		r0 = rf(_a0, _a1, _a2, _a3)
+	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, bool, bool) error); ok {
-		r1 = rf(_a0, _a1, _a2, _a3)
+	if rf, ok := ret.Get(1).(func(context.Context, string) string); ok {
+		r1 = rf(_a0, _a1)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(string)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(context.Context, string) error); ok {
+		r2 = rf(_a0, _a1)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // ContainerClient_Logs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Logs'
@@ -229,25 +236,23 @@ type ContainerClient_Logs_Call struct {
 // Logs is a helper method to define mock.On call
 //   - _a0 context.Context
 //   - _a1 string
-//   - _a2 bool
-//   - _a3 bool
-func (_e *ContainerClient_Expecter) Logs(_a0 interface{}, _a1 interface{}, _a2 interface{}, _a3 interface{}) *ContainerClient_Logs_Call {
-	return &ContainerClient_Logs_Call{Call: _e.mock.On("Logs", _a0, _a1, _a2, _a3)}
+func (_e *ContainerClient_Expecter) Logs(_a0 interface{}, _a1 interface{}) *ContainerClient_Logs_Call {
+	return &ContainerClient_Logs_Call{Call: _e.mock.On("Logs", _a0, _a1)}
 }
 
-func (_c *ContainerClient_Logs_Call) Run(run func(_a0 context.Context, _a1 string, _a2 bool, _a3 bool)) *ContainerClient_Logs_Call {
+func (_c *ContainerClient_Logs_Call) Run(run func(_a0 context.Context, _a1 string)) *ContainerClient_Logs_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(bool), args[3].(bool))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
 
-func (_c *ContainerClient_Logs_Call) Return(_a0 string, _a1 error) *ContainerClient_Logs_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *ContainerClient_Logs_Call) Return(_a0 string, _a1 string, _a2 error) *ContainerClient_Logs_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *ContainerClient_Logs_Call) RunAndReturn(run func(context.Context, string, bool, bool) (string, error)) *ContainerClient_Logs_Call {
+func (_c *ContainerClient_Logs_Call) RunAndReturn(run func(context.Context, string) (string, string, error)) *ContainerClient_Logs_Call {
 	_c.Call.Return(run)
 	return _c
 }

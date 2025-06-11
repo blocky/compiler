@@ -14,7 +14,7 @@ type Client interface {
 	Create(context.Context, Config) (string, error)
 	Start(context.Context, string) error
 	Wait(context.Context, string) (int, string, error)
-	Logs(context.Context, string, bool, bool) (string, error)
+	Logs(context.Context, string) (string, string, error)
 	Stop(context.Context, string) error
 	Remove(context.Context, string) error
 }
@@ -90,14 +90,11 @@ func (r *Runtime) GetOutput(
 	if err != nil {
 		return zeroRet, fmt.Errorf("waiting for container '%s': %w", cID, err)
 	}
-	stdout, err := r.client.Logs(ctx, cID, true, false)
+	stdout, stderr, err := r.client.Logs(ctx, cID)
 	if err != nil {
-		return zeroRet, fmt.Errorf("getting container stdout: %w", err)
+		return zeroRet, fmt.Errorf("getting container logs: %w", err)
 	}
-	stderr, err := r.client.Logs(ctx, cID, false, true)
-	if err != nil {
-		return zeroRet, fmt.Errorf("getting container stderr: %w", err)
-	}
+
 	return Output{
 		Status:   status,
 		ErrorMsg: errMsg,

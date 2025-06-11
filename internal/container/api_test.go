@@ -1,6 +1,7 @@
 package container_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/moby/moby/pkg/stdcopy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -557,7 +559,7 @@ func TestNewCreateConfig(t *testing.T) {
 		assert.Equal(t, want.Binds, got.HostConfig.Binds)
 		assert.Equal(t, want.AutoRemove, got.HostConfig.AutoRemove)
 
-		assert.True(t, got.TTY)
+		assert.False(t, got.TTY)
 
 	})
 }
@@ -580,7 +582,7 @@ func TestClient_Create(t *testing.T) {
 				"Binds":      wantCfg.Binds,
 				"AutoRemove": wantCfg.AutoRemove,
 			},
-			"Tty": true,
+			"Tty": false,
 		}
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1003,29 +1005,39 @@ func TestClient_Wait(t *testing.T) {
 	})
 }
 
+func multiplexStdoutStderrStrings(
+	t *testing.T,
+	stdout string,
+	stderr string,
+) string {
+	multiplex := &bytes.Buffer{}
+	_, err := stdcopy.NewStdWriter(multiplex, stdcopy.Stdout).Write([]byte(stdout))
+	require.NoError(t, err)
+	_, err = stdcopy.NewStdWriter(multiplex, stdcopy.Stderr).Write([]byte(stderr))
+	require.NoError(t, err)
+	return multiplex.String()
+}
+
 func TestClient_Logs(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		// given
 		wantID := "test-id"
 		wantMethod := "GET"
-		wantStdOut := "true"
-		wantStdErr := "true"
 		wantPath := fmt.Sprintf("/v%s/containers/%s/logs", container.APIVersion, wantID)
-		wantLogs := []string{"first line of logs", "second line of logs"}
+		wantStdOut := "output from stdout"
+		wantStdErr := "output from stderr"
+		logs := multiplexStdoutStderrStrings(t, wantStdOut, wantStdErr)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, wantMethod, r.Method)
 			assert.Equal(t, wantPath, r.URL.Path)
-			assert.Equal(t, wantStdOut, r.URL.Query().Get("stdout"))
-			assert.Equal(t, wantStdErr, r.URL.Query().Get("stderr"))
+			assert.Equal(t, "true", r.URL.Query().Get("stdout"))
+			assert.Equal(t, "true", r.URL.Query().Get("stderr"))
 
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
-			for _, logLine := range wantLogs {
-				_, err := fmt.Fprintln(w, logLine)
-				require.NoError(t, err)
-			}
-
+			_, err := fmt.Fprintln(w, logs)
+			require.NoError(t, err)
 		}))
 		defer ts.Close()
 
@@ -1036,13 +1048,12 @@ func TestClient_Logs(t *testing.T) {
 		}
 
 		// when
-		gotLogs, err := sut.Logs(context.Background(), wantID, true, true)
+		gotStdout, gotStderr, err := sut.Logs(context.Background(), wantID)
 
 		// then
 		require.NoError(t, err)
-		for _, wantLog := range wantLogs {
-			assert.Contains(t, gotLogs, wantLog)
-		}
+		assert.Equal(t, wantStdOut, gotStdout)
+		assert.Equal(t, wantStdErr, gotStderr)
 	})
 
 	for name, tc := range map[string]struct {
@@ -1082,7 +1093,7 @@ func TestClient_Logs(t *testing.T) {
 			}
 
 			// when
-			_, gotErr := sut.Logs(context.Background(), wantID, true, true)
+			_, _, gotErr := sut.Logs(context.Background(), wantID)
 
 			// then
 			assert.ErrorContains(t, gotErr, tc.wantError)
@@ -1103,7 +1114,7 @@ func TestClient_Logs(t *testing.T) {
 		}
 
 		// when
-		_, gotErr := sut.Logs(context.Background(), "id", true, true)
+		_, _, gotErr := sut.Logs(context.Background(), "id")
 
 		// then
 		require.Error(t, gotErr)

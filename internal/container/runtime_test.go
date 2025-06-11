@@ -252,8 +252,8 @@ func TestRuntime_GetOutput(t *testing.T) {
 		wantID := "testid"
 		wantStatus := 2025
 		wantMsg := "test message"
-		wantStdOut := "test stdout"
-		wantStdErr := "test stderr"
+		wantStdOut := "output from stdout"
+		wantStdErr := "output from stderr"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
 		sut := container.NewRuntimeFromRaw(mockClient, slog.Default())
@@ -265,13 +265,8 @@ func TestRuntime_GetOutput(t *testing.T) {
 			Once()
 
 		mockClient.EXPECT().
-			Logs(ctx, wantID, true, false).
-			Return(wantStdOut, nil).
-			Once()
-
-		mockClient.EXPECT().
-			Logs(ctx, wantID, false, true).
-			Return(wantStdErr, nil).
+			Logs(ctx, wantID).
+			Return(wantStdOut, wantStdErr, nil).
 			Once()
 
 		// when
@@ -322,8 +317,8 @@ func TestRuntime_GetOutput(t *testing.T) {
 			Once()
 
 		mockClient.EXPECT().
-			Logs(ctx, wantID, true, false).
-			Return("", errors.New(wantErrorMsg)).
+			Logs(ctx, wantID).
+			Return("", "", errors.New(wantErrorMsg)).
 			Once()
 
 		// when
@@ -430,8 +425,8 @@ func TestRuntime_Run(t *testing.T) {
 		}
 		wantStatus := container.OK
 		wantMsg := "test message"
-		wantStdOut := "test stdout"
-		wantStdErr := "test stderr"
+		wantStdOut := "output from stdout"
+		wantStdErr := "output from stderr"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
 		mockLogger := mocks.NewContainerLogger(t)
@@ -459,12 +454,8 @@ func TestRuntime_Run(t *testing.T) {
 			Return(wantStatus, wantMsg, nil).
 			Once()
 		mockClient.EXPECT().
-			Logs(ctx, wantID, true, false).
-			Return(wantStdOut, nil).
-			Once()
-		mockClient.EXPECT().
-			Logs(ctx, wantID, false, true).
-			Return(wantStdErr, nil).
+			Logs(ctx, wantID).
+			Return(wantStdOut, wantStdErr, nil).
 			Once()
 		mockClient.EXPECT().
 			Stop(ctx, wantID).
@@ -675,8 +666,8 @@ func TestRuntime_Run(t *testing.T) {
 		}
 		wantStatus := container.OK
 		wantMsg := "test message"
-		wantStdOut := "test stdout"
-		wantStdErr := "test stderr"
+		wantStdOut := "output from stdout"
+		wantStdErr := "output from stderr"
 		wantErrMsg := "removing container: test error message"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
@@ -705,12 +696,8 @@ func TestRuntime_Run(t *testing.T) {
 			Return(wantStatus, wantMsg, nil).
 			Once()
 		mockClient.EXPECT().
-			Logs(ctx, wantID, true, false).
-			Return(wantStdOut, nil).
-			Once()
-		mockClient.EXPECT().
-			Logs(ctx, wantID, false, true).
-			Return(wantStdErr, nil).
+			Logs(ctx, wantID).
+			Return(wantStdOut, wantStdErr, nil).
 			Once()
 		mockClient.EXPECT().
 			Stop(ctx, wantID).

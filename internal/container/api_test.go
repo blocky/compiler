@@ -1005,19 +1005,6 @@ func TestClient_Wait(t *testing.T) {
 	})
 }
 
-func multiplexStdoutStderrStrings(
-	t *testing.T,
-	stdout string,
-	stderr string,
-) string {
-	multiplex := &bytes.Buffer{}
-	_, err := stdcopy.NewStdWriter(multiplex, stdcopy.Stdout).Write([]byte(stdout))
-	require.NoError(t, err)
-	_, err = stdcopy.NewStdWriter(multiplex, stdcopy.Stderr).Write([]byte(stderr))
-	require.NoError(t, err)
-	return multiplex.String()
-}
-
 func TestClient_Logs(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		// given
@@ -1026,7 +1013,14 @@ func TestClient_Logs(t *testing.T) {
 		wantPath := fmt.Sprintf("/v%s/containers/%s/logs", container.APIVersion, wantID)
 		wantStdOut := "output from stdout"
 		wantStdErr := "output from stderr"
-		logs := multiplexStdoutStderrStrings(t, wantStdOut, wantStdErr)
+
+		wantLogs := &bytes.Buffer{}
+		_, err := stdcopy.NewStdWriter(wantLogs, stdcopy.Stdout).
+			Write([]byte(wantStdOut))
+		require.NoError(t, err)
+		_, err = stdcopy.NewStdWriter(wantLogs, stdcopy.Stderr).
+			Write([]byte(wantStdErr))
+		require.NoError(t, err)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, wantMethod, r.Method)
@@ -1036,7 +1030,7 @@ func TestClient_Logs(t *testing.T) {
 
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
-			_, err := fmt.Fprintln(w, logs)
+			_, err := fmt.Fprintln(w, wantLogs.String())
 			require.NoError(t, err)
 		}))
 		defer ts.Close()

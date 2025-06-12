@@ -261,7 +261,6 @@ func NewCreateConfig(in Config) CreateConfig {
 			Binds:      in.Binds,
 			AutoRemove: in.AutoRemove,
 		},
-		TTY: false,
 	}
 }
 

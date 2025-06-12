@@ -14,7 +14,7 @@ type Client interface {
 	Create(context.Context, Config) (string, error)
 	Start(context.Context, string) error
 	Wait(context.Context, string) (int, string, error)
-	Logs(context.Context, string) (string, error)
+	Logs(context.Context, string) (string, string, error)
 	Stop(context.Context, string) error
 	Remove(context.Context, string) error
 }
@@ -77,7 +77,8 @@ func (r *Runtime) Launch(
 type Output struct {
 	Status   int
 	ErrorMsg string
-	Logs     string
+	StdOut   string
+	StdErr   string
 }
 
 func (r *Runtime) GetOutput(
@@ -89,14 +90,16 @@ func (r *Runtime) GetOutput(
 	if err != nil {
 		return zeroRet, fmt.Errorf("waiting for container '%s': %w", cID, err)
 	}
-	logs, err := r.client.Logs(ctx, cID)
+	stdout, stderr, err := r.client.Logs(ctx, cID)
 	if err != nil {
 		return zeroRet, fmt.Errorf("getting container logs: %w", err)
 	}
+
 	return Output{
 		Status:   status,
 		ErrorMsg: errMsg,
-		Logs:     logs,
+		StdOut:   stdout,
+		StdErr:   stderr,
 	}, nil
 }
 
@@ -147,13 +150,14 @@ func (r *Runtime) Run(
 		return zeroRet, fmt.Errorf("getting container output: %w", err)
 	}
 
-	r.log.Debug(output.Logs)
+	r.log.Debug(output.StdOut)
+	r.log.Debug(output.StdErr)
 	if output.Status != OK {
 		return Output{}, fmt.Errorf(
-			"running container, status: '%d', msg: '%s', log: '%s'",
+			"running container, status: '%d', msg: '%s', stderr: '%s'",
 			output.Status,
 			output.ErrorMsg,
-			output.Logs,
+			output.StdErr,
 		)
 	}
 	return output, nil

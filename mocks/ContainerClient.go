@@ -194,7 +194,7 @@ func (_c *ContainerClient_ImageExists_Call) RunAndReturn(run func(context.Contex
 }
 
 // Logs provides a mock function with given fields: _a0, _a1
-func (_m *ContainerClient) Logs(_a0 context.Context, _a1 string) (string, error) {
+func (_m *ContainerClient) Logs(_a0 context.Context, _a1 string) (string, string, error) {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
@@ -202,8 +202,9 @@ func (_m *ContainerClient) Logs(_a0 context.Context, _a1 string) (string, error)
 	}
 
 	var r0 string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
+	var r1 string
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (string, string, error)); ok {
 		return rf(_a0, _a1)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
@@ -212,13 +213,19 @@ func (_m *ContainerClient) Logs(_a0 context.Context, _a1 string) (string, error)
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string) string); ok {
 		r1 = rf(_a0, _a1)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(string)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(context.Context, string) error); ok {
+		r2 = rf(_a0, _a1)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // ContainerClient_Logs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Logs'
@@ -240,12 +247,12 @@ func (_c *ContainerClient_Logs_Call) Run(run func(_a0 context.Context, _a1 strin
 	return _c
 }
 
-func (_c *ContainerClient_Logs_Call) Return(_a0 string, _a1 error) *ContainerClient_Logs_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *ContainerClient_Logs_Call) Return(_a0 string, _a1 string, _a2 error) *ContainerClient_Logs_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *ContainerClient_Logs_Call) RunAndReturn(run func(context.Context, string) (string, error)) *ContainerClient_Logs_Call {
+func (_c *ContainerClient_Logs_Call) RunAndReturn(run func(context.Context, string) (string, string, error)) *ContainerClient_Logs_Call {
 	_c.Call.Return(run)
 	return _c
 }

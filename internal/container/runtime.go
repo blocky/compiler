@@ -154,10 +154,9 @@ func (r *Runtime) Run(
 	r.log.Debug(output.StdErr)
 	if output.Status != OK {
 		return Output{}, fmt.Errorf(
-			"running container, status: '%d', msg: '%s', stdout: '%s', stderr: '%s'",
+			"running container, status: '%d', msg: '%s', stderr: '%s'",
 			output.Status,
 			output.ErrorMsg,
-			output.StdOut,
 			output.StdErr,
 		)
 	}

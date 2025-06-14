@@ -133,7 +133,7 @@ func (r *Runtime) Run(
 
 	cID, err := r.Launch(ctx, cfg)
 	if err != nil {
-		return zeroRet, err
+		return zeroRet, fmt.Errorf("launching container: %w", err)
 	}
 	defer func() {
 		err := r.CleanUp(ctx, cID)
@@ -149,7 +149,7 @@ func (r *Runtime) Run(
 
 	r.log.Debug(output.Logs)
 	if output.Status != OK {
-		return Output{}, fmt.Errorf(
+		return zeroRet, fmt.Errorf(
 			"running container, status: '%d', msg: '%s', log: '%s'",
 			output.Status,
 			output.ErrorMsg,

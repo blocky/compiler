@@ -137,48 +137,63 @@ func TestState_Init(t *testing.T) {
 		assertIDsEqual(t, instanceStateDir, []string{})
 	})
 
-	t.Run("happy path - two instances", func(t *testing.T) {
-		// given
-		appStateDir := t.TempDir()
-		PIDs := []int{1, 2}
+	for name, tc := range map[string]struct {
+		firstPID  int
+		secondPID int
+	}{
+		"happy path - two instances (different PIDs)": {
+			firstPID:  1,
+			secondPID: 2,
+		},
+		"happy path - two instances (same PID)": {
+			firstPID:  1,
+			secondPID: 1,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			// given
+			appStateDir := t.TempDir()
+			PIDs := []int{tc.firstPID, tc.secondPID}
 
-		// when
-		gotInstance1, err := state.Init(appStateDir, PIDs[0])
-		require.NoError(t, err)
-		gotInstance2, err := state.Init(appStateDir, PIDs[1])
-		require.NoError(t, err)
+			// when
+			gotInstance1, err := state.Init(appStateDir, PIDs[0])
+			require.NoError(t, err)
+			gotInstance2, err := state.Init(appStateDir, PIDs[1])
+			require.NoError(t, err)
 
-		// then
-		assertDirElementCount(t, appStateDir, 2)
-		require.NotEmpty(t, gotInstance1)
-		require.NotEmpty(t, gotInstance2)
-		require.LessOrEqual(t, gotInstance2.Time(), gotInstance2.Time())
+			// then
+			assertDirElementCount(t, appStateDir, 2)
+			require.NotEmpty(t, gotInstance1)
+			require.NotEmpty(t, gotInstance2)
+			require.LessOrEqual(t, gotInstance2.Time(), gotInstance2.Time())
+			require.NotEqual(t, gotInstance2.Dir(), gotInstance1.Dir())
 
-		instances := []*state.State{gotInstance1, gotInstance2}
-		for idx, instance := range instances {
-			// assert state
-			assert.Empty(t, instance.IDs())
-			assert.True(
-				t,
-				strings.HasPrefix(
-					filepath.Base(instance.Dir()),
-					fmt.Sprintf(
-						"%d%s",
-						PIDs[idx],
-						state.NameSeparator,
+			instances := []*state.State{gotInstance1, gotInstance2}
+			for idx, instance := range instances {
+				// assert state
+				assert.Empty(t, instance.IDs())
+				assert.True(
+					t,
+					strings.HasPrefix(
+						filepath.Base(instance.Dir()),
+						fmt.Sprintf(
+							"%d%s",
+							PIDs[idx],
+							state.NameSeparator,
+						),
 					),
-				),
-				"instance state dir must start with PID",
-			)
-			assert.GreaterOrEqual(t, time.Now(), instance.Time())
+					"instance state dir must start with PID",
+				)
+				assert.GreaterOrEqual(t, time.Now(), instance.Time())
 
-			// assert persisted state
-			assertFileExistsByName(t, instance.Dir(), "metadata.json")
-			assertFileExistsByName(t, instance.Dir(), "ids.json")
-			assertCorrectMetadata(t, instance.Dir())
-			assertIDsEqual(t, instance.Dir(), []string{})
-		}
-	})
+				// assert persisted state
+				assertFileExistsByName(t, instance.Dir(), "metadata.json")
+				assertFileExistsByName(t, instance.Dir(), "ids.json")
+				assertCorrectMetadata(t, instance.Dir())
+				assertIDsEqual(t, instance.Dir(), []string{})
+			}
+		})
+	}
 }
 
 func TestState_Remove(t *testing.T) {
@@ -265,6 +280,7 @@ func TestState_AddID(t *testing.T) {
 		}
 
 		// then
+		assert.Equal(t, wantIDs, sut.IDs())
 		assertIDsEqual(t, sut.Dir(), wantIDs)
 	})
 
@@ -298,6 +314,7 @@ func TestState_AddID(t *testing.T) {
 			}
 
 			// then
+			assert.Equal(t, wantIDs, sut.IDs())
 			assertIDsEqual(t, sut.Dir(), wantIDs)
 			assertIDsEqual(t, otherInstance.Dir(), []string{})
 		})
@@ -325,6 +342,7 @@ func TestState_RemoveID(t *testing.T) {
 		}
 
 		// then
+		assert.Equal(t, wantIDs, sut.IDs())
 		assertIDsEqual(t, sut.Dir(), wantIDs)
 	})
 
@@ -365,6 +383,7 @@ func TestState_RemoveID(t *testing.T) {
 			}
 
 			// then
+			assert.Equal(t, wantIDs, sut.IDs())
 			assertIDsEqual(t, sut.Dir(), wantIDs)
 			assertIDsEqual(t, otherInstance.Dir(), IDsToAdd)
 		})

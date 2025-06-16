@@ -19,7 +19,7 @@ type Logger interface {
 	Debug(string, ...any)
 }
 
-func procRunning(pid int) (bool, error) {
+func ProcRunning(pid int) (bool, error) {
 	p, err := os.FindProcess(pid)
 	if err != nil {
 		return false, fmt.Errorf("finding proc '%d: %w'", pid, err)
@@ -47,13 +47,13 @@ func CleanIDs(cleaner Cleaner, log Logger, IDs []string) {
 	for _, ID := range IDs {
 		err := cleaner.CleanUp(ctx, ID)
 		if err != nil {
-			log.Debug("cleaning up id", "id", ID)
+			log.Debug("cleaning up id", "id", ID, "err", err.Error())
 			continue
 		}
 	}
 }
 
-func CleanupStale(cleaner Cleaner, log Logger, dirPath string) error {
+func CleanupStale(dirPath string, cleaner Cleaner, log Logger) error {
 	dirEntries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return fmt.Errorf("reading app state dir: %w", err)
@@ -73,7 +73,7 @@ func CleanupStale(cleaner Cleaner, log Logger, dirPath string) error {
 			continue
 		}
 
-		isAlive, err := procRunning(pid)
+		isAlive, err := ProcRunning(pid)
 		switch {
 		case err != nil:
 			continue
@@ -83,7 +83,7 @@ func CleanupStale(cleaner Cleaner, log Logger, dirPath string) error {
 
 		staleIDs, err := GetPersistedIDs(filepath.Join(dirPath, e.Name()))
 		if err != nil {
-			log.Debug("getting persisted ids", "id", e.Name())
+			log.Debug("error getting persisted ids", "name", e.Name())
 			continue
 		}
 		CleanIDs(cleaner, log, staleIDs)

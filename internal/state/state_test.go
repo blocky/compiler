@@ -32,7 +32,12 @@ func TestInstanceDir(t *testing.T) {
 		path,
 		filepath.Join(
 			wantDir,
-			fmt.Sprintf("%d.%s", wantPID, wantID),
+			fmt.Sprintf(
+				"%d%s%s",
+				wantPID,
+				state.NameSeparator,
+				wantID,
+			),
 		),
 	)
 }
@@ -88,12 +93,7 @@ func assertCorrectMetadata(t *testing.T, instanceStateDir string) {
 }
 
 func assertIDsEqual(t *testing.T, instanceStateDir string, wantIds []string) {
-	idFile := filepath.Join(instanceStateDir, "ids.json")
-	idBytes, err := os.ReadFile(idFile)
-	require.NoError(t, err)
-
-	var gotIDs []string
-	err = json.Unmarshal(idBytes, &gotIDs)
+	gotIDs, err := state.GetPersistedIDs(instanceStateDir)
 	require.NoError(t, err)
 	assert.Equal(t, wantIds, gotIDs)
 }
@@ -117,7 +117,11 @@ func TestState_Init(t *testing.T) {
 			t,
 			strings.HasPrefix(
 				filepath.Base(got.Dir()),
-				fmt.Sprintf("%d.", appPID),
+				fmt.Sprintf(
+					"%d%s",
+					appPID,
+					state.NameSeparator,
+				),
 			),
 			"instance state dir must start with PID",
 		)
@@ -158,7 +162,11 @@ func TestState_Init(t *testing.T) {
 				t,
 				strings.HasPrefix(
 					filepath.Base(instance.Dir()),
-					fmt.Sprintf("%d.", PIDs[idx]),
+					fmt.Sprintf(
+						"%d%s",
+						PIDs[idx],
+						state.NameSeparator,
+					),
 				),
 				"instance state dir must start with PID",
 			)
@@ -173,7 +181,7 @@ func TestState_Init(t *testing.T) {
 	})
 }
 
-func TestState_CleanUp(t *testing.T) {
+func TestState_Remove(t *testing.T) {
 	t.Run("happy path - one instance", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
@@ -183,7 +191,7 @@ func TestState_CleanUp(t *testing.T) {
 		assertDirElementCount(t, appStateDir, 1)
 
 		// when
-		gotErr := sut.CleanUp()
+		gotErr := sut.Remove()
 
 		// then
 		require.NoError(t, gotErr)
@@ -203,14 +211,18 @@ func TestState_CleanUp(t *testing.T) {
 		assertDirElementCount(t, appStateDir, 2)
 
 		// when
-		gotErr := sut.CleanUp()
+		gotErr := sut.Remove()
 
 		// then
 		require.NoError(t, gotErr)
 		assertDirElementCount(t, appStateDir, 1)
 		assert.Len(
 			t,
-			findDirByNamePrefix(t, appStateDir, fmt.Sprintf("%d.", 1)),
+			findDirByNamePrefix(
+				t,
+				appStateDir,
+				fmt.Sprintf("%d%s", 1, state.NameSeparator),
+			),
 			0,
 			"expected no dirs belonging to PID '%d'",
 			1,
@@ -230,7 +242,7 @@ func TestState_CleanUp(t *testing.T) {
 		assertDirElementCount(t, appStateDir, 2)
 
 		// when
-		gotErr := sut.CleanUp()
+		gotErr := sut.Remove()
 
 		// then
 		require.NoError(t, gotErr)

@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const NameSeparator = "."
+
 type State struct {
 	dir  string
 	time time.Time
@@ -19,11 +21,10 @@ type State struct {
 }
 
 func InstanceDir(dirPath string, pid int, id uuid.UUID) string {
-	instanceDirName := fmt.Sprintf("%d.%s", pid, id)
+	instanceDirName := fmt.Sprintf("%d%s%s", pid, NameSeparator, id)
 	return filepath.Join(dirPath, instanceDirName)
 }
 
-// todo: when creating use xdg.StateHome+appName as dirPath
 func Init(dirPath string, pID int) (*State, error) {
 	s := &State{
 		dir:  InstanceDir(dirPath, pID, uuid.New()),
@@ -78,7 +79,7 @@ func (s *State) persist() error {
 	return nil
 }
 
-func (s *State) CleanUp() error {
+func (s *State) Remove() error {
 	if err := os.RemoveAll(s.dir); err != nil {
 		return fmt.Errorf("removing state directory: %w", err)
 	}

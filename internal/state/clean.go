@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,32 +24,6 @@ func ProcRunning(pid int) (bool, error) {
 		return false, fmt.Errorf("finding proc '%d: %w'", pid, err)
 	}
 	return p.Signal(syscall.Signal(0)) == nil, nil
-}
-
-func GetPersistedIDs(dirPath string) ([]string, error) {
-	idFile := filepath.Join(dirPath, "ids.json")
-	idBytes, err := os.ReadFile(idFile)
-	if err != nil {
-		return nil, fmt.Errorf("reading ids: %w", err)
-	}
-
-	var gotIDs []string
-	err = json.Unmarshal(idBytes, &gotIDs)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshalling ids: %w", err)
-	}
-	return gotIDs, nil
-}
-
-func CleanIDs(cleaner Cleaner, log Logger, IDs []string) {
-	ctx := context.Background()
-	for _, ID := range IDs {
-		err := cleaner.CleanUp(ctx, ID)
-		if err != nil {
-			log.Debug("cleaning up id", "id", ID, "err", err.Error())
-			continue
-		}
-	}
 }
 
 func CleanupStale(dirPath string, cleaner Cleaner, log Logger) error {
@@ -81,15 +54,13 @@ func CleanupStale(dirPath string, cleaner Cleaner, log Logger) error {
 			continue
 		}
 
-		staleIDs, err := GetPersistedIDs(filepath.Join(dirPath, e.Name()))
+		staleState, err := Load(filepath.Join(dirPath, e.Name()))
 		if err != nil {
-			log.Debug("error getting persisted ids", "name", e.Name())
+			log.Debug("loading stale state", "name", e.Name(), "err", err.Error())
 			continue
 		}
-		CleanIDs(cleaner, log, staleIDs)
-
-		if err := os.RemoveAll(filepath.Join(dirPath, e.Name())); err != nil {
-			return fmt.Errorf("removing stale state directory: %w", err)
+		if err = staleState.Finalize(cleaner, log); err != nil {
+			log.Debug("finalizing stale state", "name", e.Name(), "err", err.Error())
 		}
 	}
 	return nil

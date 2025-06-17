@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -31,8 +32,24 @@ func Init(dirPath string, pID int) (*State, error) {
 		time: time.Now(),
 		ids:  make([]string, 0),
 	}
-	if err := s.persist(); err != nil {
-		return nil, fmt.Errorf("persisting new state: %w", err)
+	if err := s.save(); err != nil {
+		defer func() {
+			_ = s.Remove()
+		}()
+		return nil, fmt.Errorf("saving new state: %w", err)
+	}
+	return s, nil
+}
+
+func Load(dirPath string) (*State, error) {
+	s := &State{
+		dir: dirPath,
+	}
+	if err := s.readMetadata(); err != nil {
+		return nil, fmt.Errorf("loading metadata: %w", err)
+	}
+	if err := s.readIDs(); err != nil {
+		return nil, fmt.Errorf("loading ids: %w", err)
 	}
 	return s, nil
 }
@@ -54,6 +71,22 @@ func (s *State) writeMetadata() error {
 	return nil
 }
 
+func (s *State) readMetadata() error {
+	src := filepath.Join(s.dir, "metadata.json")
+	bytes, err := os.ReadFile(src)
+	if err != nil {
+		return fmt.Errorf("reading metadata: %w", err)
+	}
+	metadata := struct {
+		Time time.Time `json:"time"`
+	}{}
+	if err = json.Unmarshal(bytes, &metadata); err != nil {
+		return fmt.Errorf("unmarshaling metadata: %w", err)
+	}
+	s.time = metadata.Time
+	return nil
+}
+
 func (s *State) writeIDs() error {
 	dst := filepath.Join(s.dir, "ids.json")
 	marshaled, err := json.Marshal(&s.ids)
@@ -66,15 +99,29 @@ func (s *State) writeIDs() error {
 	return nil
 }
 
-func (s *State) persist() error {
+func (s *State) readIDs() error {
+	src := filepath.Join(s.dir, "ids.json")
+	bytes, err := os.ReadFile(src)
+	if err != nil {
+		return fmt.Errorf("reading ids: %w", err)
+	}
+	var ids []string
+	if err := json.Unmarshal(bytes, &ids); err != nil {
+		return fmt.Errorf("unmarshaling ids: %w", err)
+	}
+	s.ids = ids
+	return nil
+}
+
+func (s *State) save() error {
 	if err := os.MkdirAll(s.dir, 0700); err != nil {
 		return fmt.Errorf("creating state directory: %w", err)
 	}
 	if err := s.writeMetadata(); err != nil {
-		return fmt.Errorf("persisting metadata: %w", err)
+		return fmt.Errorf("saving metadata: %w", err)
 	}
 	if err := s.writeIDs(); err != nil {
-		return fmt.Errorf("persisting ids: %w", err)
+		return fmt.Errorf("saving ids: %w", err)
 	}
 	return nil
 }
@@ -108,4 +155,31 @@ func (s *State) Dir() string {
 
 func (s *State) Time() time.Time {
 	return s.time
+}
+
+func (s *State) CleanIDs(cleaner Cleaner, log Logger) {
+	ctx := context.Background()
+	var cleanedIDs []string
+	for _, ID := range s.IDs() {
+		if err := cleaner.CleanUp(ctx, ID); err != nil {
+			log.Debug("cleaning up id", "id", ID, "err", err.Error())
+			continue
+		}
+		cleanedIDs = append(cleanedIDs, ID)
+	}
+	for _, ID := range cleanedIDs {
+		if err := s.RemoveID(ID); err != nil {
+			log.Debug("removing cleaned id", "id", ID, "err", err.Error())
+		}
+	}
+}
+
+func (s *State) Finalize(cleaner Cleaner, log Logger) error {
+	s.CleanIDs(cleaner, log)
+	if len(s.IDs()) == 0 {
+		if err := s.Remove(); err != nil {
+			log.Debug("removing finalized state", "err", err.Error())
+		}
+	}
+	return nil
 }

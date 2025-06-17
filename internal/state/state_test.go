@@ -1,7 +1,9 @@
 package state_test
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,9 +14,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/blocky/compiler/internal/state"
+	"github.com/blocky/compiler/mocks"
 )
 
 func TestInstanceDir(t *testing.T) {
@@ -92,13 +96,28 @@ func assertCorrectMetadata(t *testing.T, instanceStateDir string) {
 	assert.GreaterOrEqual(t, time.Now(), startTime)
 }
 
+func getPersistedIDs(dirPath string) ([]string, error) {
+	idFile := filepath.Join(dirPath, "ids.json")
+	idBytes, err := os.ReadFile(idFile)
+	if err != nil {
+		return nil, fmt.Errorf("reading ids: %w", err)
+	}
+
+	var gotIDs []string
+	err = json.Unmarshal(idBytes, &gotIDs)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshalling ids: %w", err)
+	}
+	return gotIDs, nil
+}
+
 func assertIDsEqual(t *testing.T, instanceStateDir string, wantIds []string) {
-	gotIDs, err := state.GetPersistedIDs(instanceStateDir)
+	gotIDs, err := getPersistedIDs(instanceStateDir)
 	require.NoError(t, err)
 	assert.Equal(t, wantIds, gotIDs)
 }
 
-func TestState_Init(t *testing.T) {
+func TestInit(t *testing.T) {
 	t.Run("happy path - one instance", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
@@ -194,6 +213,114 @@ func TestState_Init(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("error saving state", func(t *testing.T) {
+		// given
+		appStateDir := t.TempDir()
+		appPID := 1
+		err := os.Chmod(appStateDir, 0555)
+		require.NoError(t, err)
+		defer func() {
+			_ = os.Chmod(appStateDir, 0700)
+		}()
+
+		// when
+		_, err = state.Init(appStateDir, appPID)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "saving new state")
+	})
+}
+
+func TestLoad(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		// given
+		appStateDir := t.TempDir()
+		appPID := 1
+
+		initializedInstance, err := state.Init(appStateDir, appPID)
+		require.NoError(t, err)
+
+		wantIDs := []string{"a", "b", "b"}
+		for _, ID := range wantIDs {
+			err := initializedInstance.AddID(ID)
+			require.NoError(t, err)
+		}
+
+		// when
+		loadedInstance, err := state.Load(initializedInstance.Dir())
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, initializedInstance.IDs(), loadedInstance.IDs())
+		assert.Equal(
+			t,
+			initializedInstance.Time().Format(time.RFC3339),
+			loadedInstance.Time().Format(time.RFC3339),
+		)
+		assert.Equal(t, initializedInstance.Dir(), loadedInstance.Dir())
+
+		// assert state
+		assert.True(
+			t,
+			strings.HasPrefix(
+				filepath.Base(loadedInstance.Dir()),
+				fmt.Sprintf(
+					"%d%s",
+					appPID,
+					state.NameSeparator,
+				),
+			),
+			"instance state dir must start with PID",
+		)
+		assert.GreaterOrEqual(t, time.Now(), loadedInstance.Time())
+		assertDirElementCount(t, appStateDir, 1)
+
+		//assert persisted state
+		instanceStateDir := loadedInstance.Dir()
+		assertFileExistsByName(t, instanceStateDir, "metadata.json")
+		assertFileExistsByName(t, instanceStateDir, "ids.json")
+		assertCorrectMetadata(t, instanceStateDir)
+	})
+
+	t.Run("error loading metadata", func(t *testing.T) {
+		// given
+		appStateDir := t.TempDir()
+		appPID := 1
+
+		initializedInstance, err := state.Init(appStateDir, appPID)
+		require.NoError(t, err)
+
+		err = os.Remove(filepath.Join(initializedInstance.Dir(), "metadata.json"))
+		require.NoError(t, err)
+
+		// when
+		_, err = state.Load(initializedInstance.Dir())
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "loading metadata")
+	})
+
+	t.Run("error loading ids", func(t *testing.T) {
+		// given
+		appStateDir := t.TempDir()
+		appPID := 1
+
+		initializedInstance, err := state.Init(appStateDir, appPID)
+		require.NoError(t, err)
+
+		err = os.Remove(filepath.Join(initializedInstance.Dir(), "ids.json"))
+		require.NoError(t, err)
+
+		// when
+		_, err = state.Load(initializedInstance.Dir())
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "loading ids")
+	})
 }
 
 func TestState_Remove(t *testing.T) {
@@ -388,4 +515,193 @@ func TestState_RemoveID(t *testing.T) {
 			assertIDsEqual(t, otherInstance.Dir(), IDsToAdd)
 		})
 	}
+}
+
+func TestState_CleanIDs(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		// given
+		appStateDir := t.TempDir()
+		validPID := os.Getpid()
+
+		sut, err := state.Init(appStateDir, validPID)
+		require.NoError(t, err)
+		assertDirElementCount(t, appStateDir, 1)
+
+		wantIDs := []string{"a", "b", "c"}
+		mockCleaner := mocks.NewStateCleaner(t)
+		for _, ID := range wantIDs {
+			err = sut.AddID(ID)
+			require.NoError(t, err)
+
+			mockCleaner.EXPECT().
+				CleanUp(context.Background(), ID).
+				Return(nil).
+				Once()
+		}
+
+		// when
+		sut.CleanIDs(mockCleaner, nil)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{}, sut.IDs())
+		assertIDsEqual(t, sut.Dir(), []string{})
+		assertDirElementCount(t, appStateDir, 1)
+	})
+
+	t.Run("error cleaning some IDs", func(t *testing.T) {
+		// given
+		appStateDir := t.TempDir()
+		validPID := os.Getpid()
+		mockLogger := mocks.NewStateLogger(t)
+
+		sut, err := state.Init(appStateDir, validPID)
+		require.NoError(t, err)
+		assertDirElementCount(t, appStateDir, 1)
+
+		wantIDs := []string{"a", "b", "c"}
+		mockCleaner := mocks.NewStateCleaner(t)
+		wantError := errors.New("cleanup error")
+		for _, ID := range wantIDs {
+			err = sut.AddID(ID)
+			require.NoError(t, err)
+		}
+		wantErroringIDs := wantIDs[:len(wantIDs)-1]
+		for _, ID := range wantErroringIDs {
+			// expecting
+			mockCleaner.EXPECT().
+				CleanUp(context.Background(), ID).
+				Return(wantError).
+				Once()
+			mockLogger.EXPECT().
+				Debug("cleaning up id", "id", ID, "err", wantError.Error()).
+				Once()
+		}
+		mockCleaner.EXPECT().
+			CleanUp(context.Background(), wantIDs[len(wantIDs)-1]).
+			Return(nil).
+			Once()
+
+		// when
+		sut.CleanIDs(mockCleaner, mockLogger)
+
+		// then
+		assert.Equal(t, wantErroringIDs, sut.IDs())
+		assertIDsEqual(t, sut.Dir(), wantErroringIDs)
+		assertDirElementCount(t, appStateDir, 1)
+	})
+}
+
+func TestState_Finalize(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		// given
+		appStateDir := t.TempDir()
+		validPID := os.Getpid()
+
+		sut, err := state.Init(appStateDir, validPID)
+		require.NoError(t, err)
+		assertDirElementCount(t, appStateDir, 1)
+
+		wantIDs := []string{"a", "b", "c"}
+		mockCleaner := mocks.NewStateCleaner(t)
+		for _, ID := range wantIDs {
+			err = sut.AddID(ID)
+			require.NoError(t, err)
+
+			mockCleaner.EXPECT().
+				CleanUp(context.Background(), ID).
+				Return(nil).
+				Once()
+		}
+
+		// when
+		err = sut.Finalize(mockCleaner, nil)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{}, sut.IDs())
+		assertDirElementCount(t, appStateDir, 0)
+	})
+
+	t.Run("error cleaning some IDs", func(t *testing.T) {
+		// given
+		appStateDir := t.TempDir()
+		validPID := os.Getpid()
+		mockLogger := mocks.NewStateLogger(t)
+
+		sut, err := state.Init(appStateDir, validPID)
+		require.NoError(t, err)
+		assertDirElementCount(t, appStateDir, 1)
+
+		wantIDs := []string{"a", "b", "c"}
+		mockCleaner := mocks.NewStateCleaner(t)
+		wantError := errors.New("cleanup error")
+		for _, ID := range wantIDs {
+			err = sut.AddID(ID)
+			require.NoError(t, err)
+		}
+		wantErroringIDs := wantIDs[:len(wantIDs)-1]
+		for _, ID := range wantErroringIDs {
+			// expecting
+			mockCleaner.EXPECT().
+				CleanUp(context.Background(), ID).
+				Return(wantError).
+				Once()
+			mockLogger.EXPECT().
+				Debug("cleaning up id", "id", ID, "err", wantError.Error()).
+				Once()
+		}
+		mockCleaner.EXPECT().
+			CleanUp(context.Background(), wantIDs[len(wantIDs)-1]).
+			Return(nil).
+			Once()
+
+		// when
+		err = sut.Finalize(mockCleaner, mockLogger)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, wantErroringIDs, sut.IDs())
+		assertIDsEqual(t, sut.Dir(), wantErroringIDs)
+		assertDirElementCount(t, appStateDir, 1)
+	})
+
+	t.Run("error finalizing stale state", func(t *testing.T) {
+		// given
+		appStateDir := t.TempDir()
+		validPID := os.Getpid()
+
+		sut, err := state.Init(appStateDir, validPID)
+		require.NoError(t, err)
+		err = os.Chmod(sut.Dir(), 0555)
+		require.NoError(t, err)
+		defer func() {
+			_ = os.Chmod(sut.Dir(), 0700)
+		}()
+		assertDirElementCount(t, appStateDir, 1)
+
+		wantIDs := []string{"a", "b", "c"}
+		mockCleaner := mocks.NewStateCleaner(t)
+		for _, ID := range wantIDs {
+			err = sut.AddID(ID)
+			require.NoError(t, err)
+
+			// expecting
+			mockCleaner.EXPECT().
+				CleanUp(context.Background(), ID).
+				Return(nil).
+				Once()
+		}
+		mockLogger := mocks.NewStateLogger(t)
+		mockLogger.EXPECT().
+			Debug("removing finalized state", "err", mock.Anything).
+			Once()
+
+		// when
+		err = sut.Finalize(mockCleaner, mockLogger)
+
+		// then
+		require.NoError(t, err)
+		assertDirElementCount(t, appStateDir, 1)
+	})
 }

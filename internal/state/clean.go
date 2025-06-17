@@ -54,12 +54,12 @@ func CleanupStale(dirPath string, cleaner Cleaner, log Logger) error {
 			continue
 		}
 
-		staleState, err := Load(filepath.Join(dirPath, e.Name()))
+		staleState, err := Load(filepath.Join(dirPath, e.Name()), log)
 		if err != nil {
 			log.Debug("loading stale state", "name", e.Name(), "err", err.Error())
 			continue
 		}
-		if err = staleState.Finalize(cleaner, log); err != nil {
+		if err = staleState.Finalize(cleaner); err != nil {
 			log.Debug("finalizing stale state", "name", e.Name(), "err", err.Error())
 		}
 	}

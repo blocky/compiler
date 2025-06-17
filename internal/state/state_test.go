@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -124,7 +125,7 @@ func TestInit(t *testing.T) {
 		appPID := 1
 
 		// when
-		got, err := state.Init(appStateDir, appPID)
+		got, err := state.Init(appStateDir, appPID, slog.Default())
 
 		// then
 		require.NoError(t, err)
@@ -175,9 +176,17 @@ func TestInit(t *testing.T) {
 			PIDs := []int{tc.firstPID, tc.secondPID}
 
 			// when
-			gotInstance1, err := state.Init(appStateDir, PIDs[0])
+			gotInstance1, err := state.Init(
+				appStateDir,
+				PIDs[0],
+				slog.Default(),
+			)
 			require.NoError(t, err)
-			gotInstance2, err := state.Init(appStateDir, PIDs[1])
+			gotInstance2, err := state.Init(
+				appStateDir,
+				PIDs[1],
+				slog.Default(),
+			)
 			require.NoError(t, err)
 
 			// then
@@ -225,7 +234,7 @@ func TestInit(t *testing.T) {
 		}()
 
 		// when
-		_, err = state.Init(appStateDir, appPID)
+		_, err = state.Init(appStateDir, appPID, slog.Default())
 
 		// then
 		require.Error(t, err)
@@ -239,7 +248,11 @@ func TestLoad(t *testing.T) {
 		appStateDir := t.TempDir()
 		appPID := 1
 
-		initializedInstance, err := state.Init(appStateDir, appPID)
+		initializedInstance, err := state.Init(
+			appStateDir,
+			appPID,
+			slog.Default(),
+		)
 		require.NoError(t, err)
 
 		wantIDs := []string{"a", "b", "b"}
@@ -249,7 +262,10 @@ func TestLoad(t *testing.T) {
 		}
 
 		// when
-		loadedInstance, err := state.Load(initializedInstance.Dir())
+		loadedInstance, err := state.Load(
+			initializedInstance.Dir(),
+			slog.Default(),
+		)
 
 		// then
 		require.NoError(t, err)
@@ -289,14 +305,20 @@ func TestLoad(t *testing.T) {
 		appStateDir := t.TempDir()
 		appPID := 1
 
-		initializedInstance, err := state.Init(appStateDir, appPID)
+		initializedInstance, err := state.Init(
+			appStateDir,
+			appPID,
+			slog.Default(),
+		)
 		require.NoError(t, err)
 
-		err = os.Remove(filepath.Join(initializedInstance.Dir(), "metadata.json"))
+		err = os.Remove(
+			filepath.Join(initializedInstance.Dir(), "metadata.json"),
+		)
 		require.NoError(t, err)
 
 		// when
-		_, err = state.Load(initializedInstance.Dir())
+		_, err = state.Load(initializedInstance.Dir(), slog.Default())
 
 		// then
 		require.Error(t, err)
@@ -308,14 +330,18 @@ func TestLoad(t *testing.T) {
 		appStateDir := t.TempDir()
 		appPID := 1
 
-		initializedInstance, err := state.Init(appStateDir, appPID)
+		initializedInstance, err := state.Init(
+			appStateDir,
+			appPID,
+			slog.Default(),
+		)
 		require.NoError(t, err)
 
 		err = os.Remove(filepath.Join(initializedInstance.Dir(), "ids.json"))
 		require.NoError(t, err)
 
 		// when
-		_, err = state.Load(initializedInstance.Dir())
+		_, err = state.Load(initializedInstance.Dir(), slog.Default())
 
 		// then
 		require.Error(t, err)
@@ -328,7 +354,7 @@ func TestState_Remove(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
 
-		sut, err := state.Init(appStateDir, 1)
+		sut, err := state.Init(appStateDir, 1, slog.Default())
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 1)
 
@@ -344,11 +370,11 @@ func TestState_Remove(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
 
-		sut, err := state.Init(appStateDir, 1)
+		sut, err := state.Init(appStateDir, 1, slog.Default())
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 1)
 
-		_, err = state.Init(appStateDir, 2)
+		_, err = state.Init(appStateDir, 2, slog.Default())
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 2)
 
@@ -375,11 +401,11 @@ func TestState_Remove(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
 
-		sut, err := state.Init(appStateDir, 1)
+		sut, err := state.Init(appStateDir, 1, slog.Default())
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 1)
 
-		_, err = state.Init(appStateDir, 1)
+		_, err = state.Init(appStateDir, 1, slog.Default())
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 2)
 
@@ -398,7 +424,7 @@ func TestState_AddID(t *testing.T) {
 		appStateDir := t.TempDir()
 		wantIDs := []string{"a", "b", "c"}
 
-		sut, err := state.Init(appStateDir, 1)
+		sut, err := state.Init(appStateDir, 1, slog.Default())
 		require.NoError(t, err)
 
 		// when
@@ -429,10 +455,14 @@ func TestState_AddID(t *testing.T) {
 			appStateDir := t.TempDir()
 			wantIDs := []string{"a", "b", "c"}
 
-			sut, err := state.Init(appStateDir, tc.sutPID)
+			sut, err := state.Init(appStateDir, tc.sutPID, slog.Default())
 			require.NoError(t, err)
 
-			otherInstance, err := state.Init(appStateDir, tc.otherPID)
+			otherInstance, err := state.Init(
+				appStateDir,
+				tc.otherPID,
+				slog.Default(),
+			)
 			require.NoError(t, err)
 
 			// when
@@ -456,7 +486,7 @@ func TestState_RemoveID(t *testing.T) {
 		IDsToRemove := []string{"a", "b"}
 		wantIDs := []string{"c"}
 
-		sut, err := state.Init(appStateDir, 1)
+		sut, err := state.Init(appStateDir, 1, slog.Default())
 		require.NoError(t, err)
 
 		for _, id := range IDsToAdd {
@@ -493,10 +523,14 @@ func TestState_RemoveID(t *testing.T) {
 			IDsToRemove := []string{"a", "b"}
 			wantIDs := []string{"c"}
 
-			sut, err := state.Init(appStateDir, tc.sutPID)
+			sut, err := state.Init(appStateDir, tc.sutPID, slog.Default())
 			require.NoError(t, err)
 
-			otherInstance, err := state.Init(appStateDir, tc.otherPID)
+			otherInstance, err := state.Init(
+				appStateDir,
+				tc.otherPID,
+				slog.Default(),
+			)
 			require.NoError(t, err)
 
 			for _, id := range IDsToAdd {
@@ -523,7 +557,7 @@ func TestState_CleanIDs(t *testing.T) {
 		appStateDir := t.TempDir()
 		validPID := os.Getpid()
 
-		sut, err := state.Init(appStateDir, validPID)
+		sut, err := state.Init(appStateDir, validPID, slog.Default())
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 1)
 
@@ -540,7 +574,7 @@ func TestState_CleanIDs(t *testing.T) {
 		}
 
 		// when
-		sut.CleanIDs(mockCleaner, nil)
+		sut.CleanIDs(mockCleaner)
 
 		// then
 		require.NoError(t, err)
@@ -555,7 +589,7 @@ func TestState_CleanIDs(t *testing.T) {
 		validPID := os.Getpid()
 		mockLogger := mocks.NewStateLogger(t)
 
-		sut, err := state.Init(appStateDir, validPID)
+		sut, err := state.Init(appStateDir, validPID, mockLogger)
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 1)
 
@@ -583,7 +617,7 @@ func TestState_CleanIDs(t *testing.T) {
 			Once()
 
 		// when
-		sut.CleanIDs(mockCleaner, mockLogger)
+		sut.CleanIDs(mockCleaner)
 
 		// then
 		assert.Equal(t, wantErroringIDs, sut.IDs())
@@ -598,7 +632,7 @@ func TestState_Finalize(t *testing.T) {
 		appStateDir := t.TempDir()
 		validPID := os.Getpid()
 
-		sut, err := state.Init(appStateDir, validPID)
+		sut, err := state.Init(appStateDir, validPID, slog.Default())
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 1)
 
@@ -615,7 +649,7 @@ func TestState_Finalize(t *testing.T) {
 		}
 
 		// when
-		err = sut.Finalize(mockCleaner, nil)
+		err = sut.Finalize(mockCleaner)
 
 		// then
 		require.NoError(t, err)
@@ -629,7 +663,7 @@ func TestState_Finalize(t *testing.T) {
 		validPID := os.Getpid()
 		mockLogger := mocks.NewStateLogger(t)
 
-		sut, err := state.Init(appStateDir, validPID)
+		sut, err := state.Init(appStateDir, validPID, mockLogger)
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 1)
 
@@ -657,7 +691,7 @@ func TestState_Finalize(t *testing.T) {
 			Once()
 
 		// when
-		err = sut.Finalize(mockCleaner, mockLogger)
+		err = sut.Finalize(mockCleaner)
 
 		// then
 		require.NoError(t, err)
@@ -670,8 +704,9 @@ func TestState_Finalize(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
 		validPID := os.Getpid()
+		mockLogger := mocks.NewStateLogger(t)
 
-		sut, err := state.Init(appStateDir, validPID)
+		sut, err := state.Init(appStateDir, validPID, mockLogger)
 		require.NoError(t, err)
 		err = os.Chmod(sut.Dir(), 0555)
 		require.NoError(t, err)
@@ -692,13 +727,12 @@ func TestState_Finalize(t *testing.T) {
 				Return(nil).
 				Once()
 		}
-		mockLogger := mocks.NewStateLogger(t)
 		mockLogger.EXPECT().
 			Debug("removing finalized state", "err", mock.Anything).
 			Once()
 
 		// when
-		err = sut.Finalize(mockCleaner, mockLogger)
+		err = sut.Finalize(mockCleaner)
 
 		// then
 		require.NoError(t, err)

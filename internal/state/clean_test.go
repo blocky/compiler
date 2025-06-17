@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,9 +27,9 @@ func TestCleanupStale(t *testing.T) {
 
 		mockLogger := mocks.NewStateLogger(t)
 
-		_, err := state.Init(appStateDir, validPID)
+		_, err := state.Init(appStateDir, validPID, mockLogger)
 		require.NoError(t, err)
-		staleInstance, err := state.Init(appStateDir, NotPID)
+		staleInstance, err := state.Init(appStateDir, NotPID, mockLogger)
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 2)
 
@@ -80,9 +81,9 @@ func TestCleanupStale(t *testing.T) {
 		appStateDir := t.TempDir()
 		validPID := os.Getpid()
 
-		_, err := state.Init(appStateDir, validPID)
+		_, err := state.Init(appStateDir, validPID, slog.Default())
 		require.NoError(t, err)
-		_, err = state.Init(appStateDir, NotPID)
+		_, err = state.Init(appStateDir, NotPID, slog.Default())
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 2)
 
@@ -116,7 +117,7 @@ func TestCleanupStale(t *testing.T) {
 		}
 
 		// when
-		err = state.CleanupStale(appStateDir, nil, nil)
+		err = state.CleanupStale(appStateDir, nil, slog.Default())
 		require.NoError(t, err)
 
 		// then
@@ -148,15 +149,16 @@ func TestCleanupStale(t *testing.T) {
 	t.Run("error loading stale state", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
+		mockLogger := mocks.NewStateLogger(t)
 
-		staleInstance, err := state.Init(appStateDir, NotPID)
+		staleInstance, err := state.Init(appStateDir, NotPID, mockLogger)
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 1)
 		err = os.Remove(filepath.Join(staleInstance.Dir(), "ids.json"))
 		require.NoError(t, err)
 
 		// expecting
-		mockLogger := mocks.NewStateLogger(t)
+
 		mockLogger.EXPECT().
 			Debug(
 				"loading stale state",
@@ -192,7 +194,7 @@ func TestCleanupStale(t *testing.T) {
 		appStateDir := t.TempDir()
 		mockLogger := mocks.NewStateLogger(t)
 
-		staleInstance, err := state.Init(appStateDir, NotPID)
+		staleInstance, err := state.Init(appStateDir, NotPID, mockLogger)
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 1)
 
@@ -233,7 +235,7 @@ func TestCleanupStale(t *testing.T) {
 		appStateDir := "/dir-that-does-not-exist"
 
 		// when
-		err := state.CleanupStale(appStateDir, nil, nil)
+		err := state.CleanupStale(appStateDir, nil, slog.Default())
 
 		// then
 		require.Error(t, err)
@@ -243,8 +245,9 @@ func TestCleanupStale(t *testing.T) {
 	t.Run("error finalizing stale state", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
+		mockLogger := mocks.NewStateLogger(t)
 
-		staleInstance, err := state.Init(appStateDir, NotPID)
+		staleInstance, err := state.Init(appStateDir, NotPID, mockLogger)
 		require.NoError(t, err)
 		err = os.Chmod(staleInstance.Dir(), 0555)
 		require.NoError(t, err)
@@ -265,7 +268,7 @@ func TestCleanupStale(t *testing.T) {
 				Return(nil).
 				Once()
 		}
-		mockLogger := mocks.NewStateLogger(t)
+
 		mockLogger.EXPECT().
 			Debug("removing finalized state", "err", mock.Anything).
 			Once()
@@ -289,94 +292,6 @@ func TestCleanupStale(t *testing.T) {
 		)
 	})
 }
-
-//func TestCleanIDs(t *testing.T) {
-//	t.Run("happy path", func(t *testing.T) {
-//		// given
-//		mockCleaner := mocks.NewStateCleaner(t)
-//
-//		// expecting
-//		wantIDs := []string{"a", "b", "c"}
-//		for _, ID := range wantIDs {
-//			mockCleaner.EXPECT().
-//				CleanUp(context.Background(), ID).
-//				Return(nil).
-//				Once()
-//		}
-//
-//		// when
-//		state.CleanIDs(mockCleaner, nil, wantIDs)
-//	})
-//
-//	t.Run("error cleaning up id", func(t *testing.T) {
-//		// given
-//		mockCleaner := mocks.NewStateCleaner(t)
-//		mockLogger := mocks.NewStateLogger(t)
-//
-//		// expecting
-//		wantError := errors.New("test cleanup error")
-//		wantIDs := []string{"a", "b", "c"}
-//		for _, ID := range wantIDs {
-//			mockCleaner.EXPECT().
-//				CleanUp(context.Background(), ID).
-//				Return(wantError).
-//				Once()
-//			mockLogger.EXPECT().
-//				Debug("cleaning up id", "id", ID, "err", wantError.Error()).
-//				Once()
-//		}
-//
-//		// when
-//		state.CleanIDs(mockCleaner, mockLogger, wantIDs)
-//	})
-//}
-//
-//func TestGetPersistedIDs(t *testing.T) {
-//	t.Run("happy path", func(t *testing.T) {
-//		// given
-//		dir := t.TempDir()
-//
-//		wantIDs := []string{"a", "b", "c"}
-//		wantBytes, err := json.Marshal(wantIDs)
-//		require.NoError(t, err)
-//
-//		err = os.WriteFile(filepath.Join(dir, "ids.json"), wantBytes, 0600)
-//		require.NoError(t, err)
-//
-//		// when
-//		gotIDs, err := state.GetPersistedIDs(dir)
-//
-//		// then
-//		require.NoError(t, err)
-//		assert.Equal(t, wantIDs, gotIDs)
-//	})
-//
-//	t.Run("error reading ids", func(t *testing.T) {
-//		// given
-//		dir := t.TempDir()
-//		// when
-//		_, err := state.GetPersistedIDs(dir)
-//
-//		// then
-//		require.Error(t, err)
-//		require.ErrorContains(t, err, "reading ids")
-//	})
-//
-//	t.Run("error unmarshalling ids", func(t *testing.T) {
-//		// given
-//		dir := t.TempDir()
-//
-//		err := os.WriteFile(filepath.Join(dir, "ids.json"), []byte("wrong-id-file"), 0600)
-//		require.NoError(t, err)
-//
-//		// when
-//		_, err = state.GetPersistedIDs(dir)
-//
-//		// then
-//		require.Error(t, err)
-//		assert.ErrorContains(t, err, "unmarshalling ids")
-//	})
-//}
 
 func TestProcRunning(t *testing.T) {
 	t.Run("happy path - process exists", func(t *testing.T) {

@@ -17,6 +17,7 @@ const NameSeparator = "."
 type State struct {
 	dir  string
 	time time.Time
+	log  Logger
 
 	ids []string
 }
@@ -26,10 +27,11 @@ func InstanceDir(dirPath string, pid int, id uuid.UUID) string {
 	return filepath.Join(dirPath, instanceDirName)
 }
 
-func Init(dirPath string, pID int) (*State, error) {
+func Init(dirPath string, pID int, log Logger) (*State, error) {
 	s := &State{
 		dir:  InstanceDir(dirPath, pID, uuid.New()),
 		time: time.Now(),
+		log:  log,
 		ids:  make([]string, 0),
 	}
 	if err := s.save(); err != nil {
@@ -41,9 +43,10 @@ func Init(dirPath string, pID int) (*State, error) {
 	return s, nil
 }
 
-func Load(dirPath string) (*State, error) {
+func Load(dirPath string, log Logger) (*State, error) {
 	s := &State{
 		dir: dirPath,
+		log: log,
 	}
 	if err := s.readMetadata(); err != nil {
 		return nil, fmt.Errorf("loading metadata: %w", err)
@@ -157,28 +160,28 @@ func (s *State) Time() time.Time {
 	return s.time
 }
 
-func (s *State) CleanIDs(cleaner Cleaner, log Logger) {
+func (s *State) CleanIDs(cleaner Cleaner) {
 	ctx := context.Background()
 	var cleanedIDs []string
 	for _, ID := range s.IDs() {
 		if err := cleaner.CleanUp(ctx, ID); err != nil {
-			log.Debug("cleaning up id", "id", ID, "err", err.Error())
+			s.log.Debug("cleaning up id", "id", ID, "err", err.Error())
 			continue
 		}
 		cleanedIDs = append(cleanedIDs, ID)
 	}
 	for _, ID := range cleanedIDs {
 		if err := s.RemoveID(ID); err != nil {
-			log.Debug("removing cleaned id", "id", ID, "err", err.Error())
+			s.log.Debug("removing cleaned id", "id", ID, "err", err.Error())
 		}
 	}
 }
 
-func (s *State) Finalize(cleaner Cleaner, log Logger) error {
-	s.CleanIDs(cleaner, log)
+func (s *State) Finalize(cleaner Cleaner) error {
+	s.CleanIDs(cleaner)
 	if len(s.IDs()) == 0 {
 		if err := s.Remove(); err != nil {
-			log.Debug("removing finalized state", "err", err.Error())
+			s.log.Debug("removing finalized state", "err", err.Error())
 		}
 	}
 	return nil

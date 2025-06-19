@@ -1,10 +1,18 @@
 # BKY-C
 WASM (reproducible) compilation tool
 
+## Building contenerized environment
+In order to run or debug tests in an isolated docker-in-docker setup you need to enable
+multiplatform builds via `docker build buildx`.
+If you need to enable it you may want to look at the following target:
+```bash
+make container-setup
+```
+
 ## Debugging in docker-in-docker setup
 To debug a test `Test_MyCode` using a container with a dedicated Docker daemon run:
 ```bash
-make start-debug-dind-env testname=Test_MyCode
+make start-debug-env-dind testname=Test_MyCode
 ```
 When you see something similar on your terminal:
 ```text

@@ -141,12 +141,12 @@ func (e *ProjectTest) BuildIfMissing(path string, name string) *ProjectTest {
 	return e
 }
 
-func (e *ProjectTest) ImportEnvVars(envKeys []string, failOnMissing bool) *ProjectTest {
+func (e *ProjectTest) ImportEnvVars(envKeys []string) *ProjectTest {
 	setupFunc := func(env *testscript.Env) error {
 		for _, key := range envKeys {
 			val := os.Getenv(key)
-			if val == empty && failOnMissing {
-				return fmt.Errorf("environment variable %s is not set", key)
+			if val == empty {
+				continue
 			}
 			env.Setenv(key, val)
 		}

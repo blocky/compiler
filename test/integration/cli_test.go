@@ -38,7 +38,7 @@ func TestBuild(t *testing.T) {
 
 	NewProjectTest(t, projectDir).
 		BuildIfMissing(CLIPath(), cliName).
-		ImportEnvVars(envVars, false).
+		ImportEnvVars(envVars).
 		CopyDir("in").
 		CopyDir("want").
 		MakeDir("got").

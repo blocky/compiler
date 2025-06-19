@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"slices"
 	"strconv"
 
@@ -17,6 +18,7 @@ import (
 )
 
 const APIVersion = "1.47"
+const empty = ""
 
 type Config struct {
 	Image      string
@@ -61,11 +63,23 @@ func NewAPIClientWithLogger(log Logger) *APIClient {
 	}
 }
 
+func getDaemonSocketPath() string {
+	defaultSocket := "/var/run/docker.sock"
+	if host := os.Getenv("DOCKER_HOST"); host != empty {
+		dh, err := url.Parse(host)
+		if err != nil || dh.Scheme != "unix" {
+			return defaultSocket
+		}
+		return dh.Path
+	}
+	return defaultSocket
+}
+
 func newUnixSockHTTPClient() *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", "/var/run/docker.sock")
+				return net.Dial("unix", getDaemonSocketPath())
 			},
 		},
 	}

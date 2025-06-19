@@ -13,6 +13,8 @@ import (
 	"os"
 	"slices"
 	"strconv"
+
+	"github.com/moby/moby/pkg/stdcopy"
 )
 
 const APIVersion = "1.47"
@@ -273,7 +275,6 @@ func NewCreateConfig(in Config) CreateConfig {
 			Binds:      in.Binds,
 			AutoRemove: in.AutoRemove,
 		},
-		TTY: true,
 	}
 }
 
@@ -355,10 +356,7 @@ func (c *APIClient) Wait(ctx context.Context, cID string) (int, string, error) {
 	return res.StatusCode, res.Error.Message, nil
 }
 
-func (c *APIClient) Logs(
-	ctx context.Context,
-	cID string,
-) (string, error) {
+func (c *APIClient) Logs(ctx context.Context, cID string) (string, string, error) {
 	resp, err := c.do(
 		ctx,
 		"GET",
@@ -371,15 +369,17 @@ func (c *APIClient) Logs(
 		http.StatusOK,
 	)
 	if err != nil {
-		return "", fmt.Errorf("making container logs request: %w", err)
+		return "", "", fmt.Errorf("making container logs request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	_, err = stdcopy.StdCopy(stdout, stderr, resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("reading container logs body: %w", err)
+		return "", "", fmt.Errorf("de-multiplexing logs: %w", err)
 	}
-	return string(body), nil
+	return stdout.String(), stderr.String(), nil
 }
 
 func (c *APIClient) Stop(ctx context.Context, cID string) error {

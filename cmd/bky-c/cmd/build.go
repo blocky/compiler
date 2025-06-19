@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/blocky/bkyc/internal/bkyc"
-	"github.com/blocky/bkyc/internal/container"
+	"github.com/blocky/compiler/internal/bkyc"
+	"github.com/blocky/compiler/internal/container"
 )
 
 var buildCmd = &cobra.Command{

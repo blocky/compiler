@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/blocky/bkyc/internal/container"
+	"github.com/blocky/compiler/internal/container"
 )
 
 const (

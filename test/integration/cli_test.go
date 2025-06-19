@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/blocky/bkyc/internal/bkyc"
+	"github.com/blocky/compiler/internal/bkyc"
 )
 
 const (

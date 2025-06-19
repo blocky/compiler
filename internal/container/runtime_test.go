@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/blocky/bkyc/internal/container"
-	"github.com/blocky/bkyc/mocks"
+	"github.com/blocky/compiler/internal/container"
+	"github.com/blocky/compiler/mocks"
 )
 
 func TestRuntime_Compatible(t *testing.T) {
@@ -252,7 +252,8 @@ func TestRuntime_GetOutput(t *testing.T) {
 		wantID := "testid"
 		wantStatus := 2025
 		wantMsg := "test message"
-		wantLogs := "test logs"
+		wantStdOut := "output from stdout"
+		wantStdErr := "output from stderr"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
 		sut := container.NewRuntimeFromRaw(mockClient, slog.Default())
@@ -265,7 +266,7 @@ func TestRuntime_GetOutput(t *testing.T) {
 
 		mockClient.EXPECT().
 			Logs(ctx, wantID).
-			Return(wantLogs, nil).
+			Return(wantStdOut, wantStdErr, nil).
 			Once()
 
 		// when
@@ -275,7 +276,8 @@ func TestRuntime_GetOutput(t *testing.T) {
 		require.NoError(t, gotErr)
 		assert.Equal(t, wantStatus, gotOutput.Status)
 		assert.Equal(t, wantMsg, gotOutput.ErrorMsg)
-		assert.Equal(t, wantLogs, gotOutput.Logs)
+		assert.Equal(t, wantStdOut, gotOutput.StdOut)
+		assert.Equal(t, wantStdErr, gotOutput.StdErr)
 	})
 
 	t.Run("error waiting for container", func(t *testing.T) {
@@ -316,7 +318,7 @@ func TestRuntime_GetOutput(t *testing.T) {
 
 		mockClient.EXPECT().
 			Logs(ctx, wantID).
-			Return("", errors.New(wantErrorMsg)).
+			Return("", "", errors.New(wantErrorMsg)).
 			Once()
 
 		// when
@@ -423,7 +425,8 @@ func TestRuntime_Run(t *testing.T) {
 		}
 		wantStatus := container.OK
 		wantMsg := "test message"
-		wantLogs := "test logs"
+		wantStdOut := "output from stdout"
+		wantStdErr := "output from stderr"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
 		mockLogger := mocks.NewContainerLogger(t)
@@ -452,7 +455,7 @@ func TestRuntime_Run(t *testing.T) {
 			Once()
 		mockClient.EXPECT().
 			Logs(ctx, wantID).
-			Return(wantLogs, nil).
+			Return(wantStdOut, wantStdErr, nil).
 			Once()
 		mockClient.EXPECT().
 			Stop(ctx, wantID).
@@ -464,7 +467,11 @@ func TestRuntime_Run(t *testing.T) {
 			Once()
 
 		mockLogger.EXPECT().
-			Debug(wantLogs).
+			Debug(wantStdOut).
+			Return().
+			Once()
+		mockLogger.EXPECT().
+			Debug(wantStdErr).
 			Return().
 			Once()
 
@@ -475,7 +482,8 @@ func TestRuntime_Run(t *testing.T) {
 		require.NoError(t, gotErr)
 		assert.Equal(t, wantStatus, gotOutput.Status)
 		assert.Equal(t, wantMsg, gotOutput.ErrorMsg)
-		assert.Equal(t, wantLogs, gotOutput.Logs)
+		assert.Equal(t, wantStdOut, gotOutput.StdOut)
+		assert.Equal(t, wantStdErr, gotOutput.StdErr)
 	})
 
 	t.Run("runtime not compatible", func(t *testing.T) {
@@ -658,7 +666,8 @@ func TestRuntime_Run(t *testing.T) {
 		}
 		wantStatus := container.OK
 		wantMsg := "test message"
-		wantLogs := "test logs"
+		wantStdOut := "output from stdout"
+		wantStdErr := "output from stderr"
 		wantErrMsg := "removing container: test error message"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
@@ -688,7 +697,7 @@ func TestRuntime_Run(t *testing.T) {
 			Once()
 		mockClient.EXPECT().
 			Logs(ctx, wantID).
-			Return(wantLogs, nil).
+			Return(wantStdOut, wantStdErr, nil).
 			Once()
 		mockClient.EXPECT().
 			Stop(ctx, wantID).
@@ -700,7 +709,11 @@ func TestRuntime_Run(t *testing.T) {
 			Once()
 
 		mockLogger.EXPECT().
-			Debug(wantLogs).
+			Debug(wantStdOut).
+			Return().
+			Once()
+		mockLogger.EXPECT().
+			Debug(wantStdErr).
 			Return().
 			Once()
 		mockLogger.EXPECT().
@@ -714,6 +727,7 @@ func TestRuntime_Run(t *testing.T) {
 		require.NoError(t, gotErr)
 		assert.Equal(t, wantStatus, gotOutput.Status)
 		assert.Equal(t, wantMsg, gotOutput.ErrorMsg)
-		assert.Equal(t, wantLogs, gotOutput.Logs)
+		assert.Equal(t, wantStdOut, gotOutput.StdOut)
+		assert.Equal(t, wantStdErr, gotOutput.StdErr)
 	})
 }

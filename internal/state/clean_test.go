@@ -56,16 +56,12 @@ func TestCleanupStale(t *testing.T) {
 		appStateDir := t.TempDir()
 		mockLogger := mocks.NewStateLogger(t)
 
-		staleInstance, err := state.Init(appStateDir, StalePID, mockLogger)
-		require.NoError(t, err)
+		wantIDs := []string{"a", "b", "c"}
+		prepareStaleStateDir(t, appStateDir, wantIDs)
 		assertDirElementCount(t, appStateDir, 1)
 
-		wantIDs := []string{"a", "b", "c"}
 		mockCleaner := mocks.NewStateCleaner(t)
 		for _, ID := range wantIDs {
-			err = staleInstance.AddID(ID)
-			require.NoError(t, err)
-
 			// expecting
 			mockCleaner.EXPECT().
 				CleanUp(context.Background(), ID).
@@ -74,7 +70,7 @@ func TestCleanupStale(t *testing.T) {
 		}
 
 		// when
-		err = state.CleanupStale(appStateDir, mockCleaner, mockLogger)
+		err := state.CleanupStale(appStateDir, mockCleaner, mockLogger)
 
 		// then
 		require.NoError(t, err)
@@ -88,8 +84,7 @@ func TestCleanupStale(t *testing.T) {
 
 		_, err := state.Init(appStateDir, validPID, slog.Default())
 		require.NoError(t, err)
-		_, err = state.Init(appStateDir, StalePID, slog.Default())
-		require.NoError(t, err)
+		prepareStaleStateDir(t, appStateDir, []string{})
 		assertDirElementCount(t, appStateDir, 2)
 
 		files := []string{
@@ -201,17 +196,12 @@ func TestCleanupStale(t *testing.T) {
 		appStateDir := t.TempDir()
 		mockLogger := mocks.NewStateLogger(t)
 
-		staleInstance, err := state.Init(appStateDir, StalePID, mockLogger)
-		require.NoError(t, err)
+		wantIDs := []string{"a", "b", "c"}
+		dirInfo := prepareStaleStateDir(t, appStateDir, wantIDs)
 		assertDirElementCount(t, appStateDir, 1)
 
-		wantIDs := []string{"a", "b", "c"}
 		mockCleaner := mocks.NewStateCleaner(t)
 		wantError := errors.New("cleanup error")
-		for _, ID := range wantIDs {
-			err = staleInstance.AddID(ID)
-			require.NoError(t, err)
-		}
 		wantErroringIDs := wantIDs[:len(wantIDs)-1]
 		for _, ID := range wantErroringIDs {
 			// expecting
@@ -229,11 +219,11 @@ func TestCleanupStale(t *testing.T) {
 			Once()
 
 		// when
-		err = state.CleanupStale(appStateDir, mockCleaner, mockLogger)
+		err := state.CleanupStale(appStateDir, mockCleaner, mockLogger)
 
 		// then
 		require.NoError(t, err)
-		assertIDsEqual(t, staleInstance.Dir(), wantErroringIDs)
+		assertIDsEqual(t, dirInfo.dir, wantErroringIDs)
 		assertDirElementCount(t, appStateDir, 1)
 	})
 
@@ -254,21 +244,17 @@ func TestCleanupStale(t *testing.T) {
 		appStateDir := t.TempDir()
 		mockLogger := mocks.NewStateLogger(t)
 
-		staleInstance, err := state.Init(appStateDir, StalePID, mockLogger)
-		require.NoError(t, err)
-		err = os.Chmod(staleInstance.Dir(), 0555)
+		wantIDs := []string{"a", "b", "c"}
+		dirInfo := prepareStaleStateDir(t, appStateDir, wantIDs)
+		err := os.Chmod(dirInfo.dir, 0555)
 		require.NoError(t, err)
 		defer func() {
-			_ = os.Chmod(staleInstance.Dir(), 0700)
+			_ = os.Chmod(dirInfo.dir, 0700)
 		}()
 		assertDirElementCount(t, appStateDir, 1)
 
-		wantIDs := []string{"a", "b", "c"}
 		mockCleaner := mocks.NewStateCleaner(t)
 		for _, ID := range wantIDs {
-			err = staleInstance.AddID(ID)
-			require.NoError(t, err)
-
 			// expecting
 			mockCleaner.EXPECT().
 				CleanUp(context.Background(), ID).
@@ -297,12 +283,12 @@ func TestCleanupStale(t *testing.T) {
 			findDirByNamePrefix(
 				t,
 				appStateDir,
-				fmt.Sprintf("%d%s", StalePID, state.NameSeparator),
+				fmt.Sprintf("%d%s", dirInfo.pid, state.NameSeparator),
 			),
 			1,
 			"expected %s dir belonging to PID '%d'",
 			1,
-			StalePID,
+			dirInfo.pid,
 		)
 	})
 }

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -307,42 +308,91 @@ func TestInit(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "saving new state")
 	})
+
+	t.Run("locks the instance state folder", func(t *testing.T) {
+		// given
+		appStateDir := t.TempDir()
+		appPID := os.Getpid()
+
+		instance, err := state.Init(appStateDir, appPID, slog.Default())
+		require.NoError(t, err)
+
+		// when
+		_, err = state.Lock(instance.Dir())
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "acquiring lock")
+	})
+}
+
+type staleDirInfo struct {
+	dir  string
+	pid  int
+	time time.Time
+	ids  []string
+}
+
+func prepareStaleStateDir(t *testing.T, dirPath string, IDs []string) staleDirInfo {
+	newStalePID := -2
+	instance, err := state.Init(
+		dirPath,
+		StalePID,
+		slog.Default(),
+	)
+	require.NoError(t, err)
+
+	for _, ID := range IDs {
+		err := instance.AddID(ID)
+		require.NoError(t, err)
+	}
+	srcName := filepath.Base(instance.Dir())
+
+	splitPoint := strings.Index(srcName, ".")
+	require.NotEqual(t, -1, splitPoint)
+	dstName := fmt.Sprintf("%d%s", newStalePID, srcName[splitPoint:])
+
+	err = copy.Copy(
+		filepath.Join(dirPath, srcName),
+		filepath.Join(dirPath, dstName),
+	)
+	require.NoError(t, err)
+
+	info := staleDirInfo{
+		dir:  filepath.Join(dirPath, dstName),
+		pid:  newStalePID,
+		time: instance.Time(),
+		ids:  instance.IDs(),
+	}
+	err = instance.Remove()
+	require.NoError(t, err)
+
+	return info
 }
 
 func TestLoad(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
-		appPID := 1
-
-		initializedInstance, err := state.Init(
-			appStateDir,
-			appPID,
-			slog.Default(),
-		)
-		require.NoError(t, err)
 
 		wantIDs := []string{"a", "b", "b"}
-		for _, ID := range wantIDs {
-			err := initializedInstance.AddID(ID)
-			require.NoError(t, err)
-		}
+		dirInfo := prepareStaleStateDir(t, appStateDir, wantIDs)
 
 		// when
 		loadedInstance, err := state.Load(
-			initializedInstance.Dir(),
+			dirInfo.dir,
 			slog.Default(),
 		)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, initializedInstance.IDs(), loadedInstance.IDs())
+		assert.Equal(t, dirInfo.ids, loadedInstance.IDs())
 		assert.Equal(
 			t,
-			initializedInstance.Time().Format(time.RFC3339),
+			dirInfo.time.Format(time.RFC3339),
 			loadedInstance.Time().Format(time.RFC3339),
 		)
-		assert.Equal(t, initializedInstance.Dir(), loadedInstance.Dir())
+		assert.Equal(t, dirInfo.dir, loadedInstance.Dir())
 
 		// assert state
 		assert.True(
@@ -351,7 +401,7 @@ func TestLoad(t *testing.T) {
 				filepath.Base(loadedInstance.Dir()),
 				fmt.Sprintf(
 					"%d%s",
-					appPID,
+					dirInfo.pid,
 					state.NameSeparator,
 				),
 			),
@@ -367,25 +417,65 @@ func TestLoad(t *testing.T) {
 		assertCorrectMetadata(t, instanceStateDir)
 	})
 
-	t.Run("error loading metadata", func(t *testing.T) {
+	t.Run("errors if dir locked - by load", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
-		appPID := 1
 
-		initializedInstance, err := state.Init(
-			appStateDir,
-			appPID,
+		wantIDs := []string{"a", "b", "b"}
+		dirInfo := prepareStaleStateDir(t, appStateDir, wantIDs)
+
+		_, err := state.Load(
+			dirInfo.dir,
 			slog.Default(),
 		)
 		require.NoError(t, err)
 
-		err = os.Remove(
-			filepath.Join(initializedInstance.Dir(), "metadata.json"),
+		// when
+		_, err = state.Load(
+			dirInfo.dir,
+			slog.Default(),
+		)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "acquiring lock")
+	})
+
+	t.Run("errors if dir locked - by init", func(t *testing.T) {
+		// given
+		appStateDir := t.TempDir()
+
+		initInstance, err := state.Init(
+			appStateDir,
+			StalePID,
+			slog.Default(),
 		)
 		require.NoError(t, err)
 
 		// when
-		_, err = state.Load(initializedInstance.Dir(), slog.Default())
+		_, err = state.Load(
+			initInstance.Dir(),
+			slog.Default(),
+		)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "acquiring lock")
+	})
+
+	t.Run("error loading metadata", func(t *testing.T) {
+		// given
+		appStateDir := t.TempDir()
+
+		dirInfo := prepareStaleStateDir(t, appStateDir, []string{})
+
+		err := os.Remove(
+			filepath.Join(dirInfo.dir, "metadata.json"),
+		)
+		require.NoError(t, err)
+
+		// when
+		_, err = state.Load(dirInfo.dir, slog.Default())
 
 		// then
 		require.Error(t, err)
@@ -395,24 +485,18 @@ func TestLoad(t *testing.T) {
 	t.Run("empty metadata", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
-		appPID := 1
 
-		initializedInstance, err := state.Init(
-			appStateDir,
-			appPID,
-			slog.Default(),
-		)
-		require.NoError(t, err)
+		dirInfo := prepareStaleStateDir(t, appStateDir, []string{})
 
-		err = os.WriteFile(
-			filepath.Join(initializedInstance.Dir(), "metadata.json"),
+		err := os.WriteFile(
+			filepath.Join(dirInfo.dir, "metadata.json"),
 			[]byte("{}"),
 			0600,
 		)
 		require.NoError(t, err)
 
 		// when
-		_, err = state.Load(initializedInstance.Dir(), slog.Default())
+		_, err = state.Load(dirInfo.dir, slog.Default())
 
 		// then
 		require.Error(t, err)
@@ -422,20 +506,13 @@ func TestLoad(t *testing.T) {
 	t.Run("error loading ids", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
-		appPID := 1
+		dirInfo := prepareStaleStateDir(t, appStateDir, []string{})
 
-		initializedInstance, err := state.Init(
-			appStateDir,
-			appPID,
-			slog.Default(),
-		)
-		require.NoError(t, err)
-
-		err = os.Remove(filepath.Join(initializedInstance.Dir(), "ids.json"))
+		err := os.Remove(filepath.Join(dirInfo.dir, "ids.json"))
 		require.NoError(t, err)
 
 		// when
-		_, err = state.Load(initializedInstance.Dir(), slog.Default())
+		_, err = state.Load(dirInfo.dir, slog.Default())
 
 		// then
 		require.Error(t, err)

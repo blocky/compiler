@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -18,9 +19,10 @@ import (
 const NameSeparator = "."
 
 type State struct {
-	dir  string
-	time time.Time
-	log  Logger
+	dir     string
+	dirLock io.Closer
+	time    time.Time
+	log     Logger
 
 	ids []string
 }
@@ -72,9 +74,15 @@ func Init(dirPath string, pID int, log Logger) (*State, error) {
 }
 
 func Load(dirPath string, log Logger) (*State, error) {
+	lock, err := Lock(dirPath)
+	if err != nil {
+		return nil, fmt.Errorf("acquiring dir lock: %w", err)
+	}
+
 	s := &State{
-		dir: dirPath,
-		log: log,
+		dir:     dirPath,
+		dirLock: lock,
+		log:     log,
 	}
 	if err := s.readMetadata(); err != nil {
 		return nil, fmt.Errorf("loading metadata: %w", err)
@@ -151,6 +159,11 @@ func (s *State) save() error {
 	if err := os.MkdirAll(s.dir, 0700); err != nil {
 		return fmt.Errorf("creating state directory: %w", err)
 	}
+	lock, err := Lock(s.dir)
+	if err != nil {
+		return fmt.Errorf("acquiring dir lock: %w", err)
+	}
+	s.dirLock = lock
 	if err := s.writeMetadata(); err != nil {
 		return fmt.Errorf("saving metadata: %w", err)
 	}
@@ -213,6 +226,9 @@ func (s *State) Finalize(cleaner Cleaner) error {
 	if len(s.IDs()) == 0 {
 		if err := s.Remove(); err != nil {
 			return fmt.Errorf("removing finalized state: %w", err)
+		}
+		if err := s.dirLock.Close(); err != nil {
+			return fmt.Errorf("closing dir lock: %w", err)
 		}
 	}
 	return nil

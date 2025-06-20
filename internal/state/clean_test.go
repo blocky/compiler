@@ -17,21 +17,48 @@ import (
 	"github.com/blocky/compiler/mocks"
 )
 
-const NotPID = -1
+const StalePID = -1
 
 func TestCleanupStale(t *testing.T) {
-	t.Run("happy path", func(t *testing.T) {
+	t.Run("happy path - alive state", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
 		validPID := os.Getpid()
 
 		mockLogger := mocks.NewStateLogger(t)
+		mockCleaner := mocks.NewStateCleaner(t)
 
 		_, err := state.Init(appStateDir, validPID, mockLogger)
 		require.NoError(t, err)
-		staleInstance, err := state.Init(appStateDir, NotPID, mockLogger)
+		assertDirElementCount(t, appStateDir, 1)
+
+		// when
+		err = state.CleanupStale(appStateDir, mockCleaner, mockLogger)
+
+		// then
 		require.NoError(t, err)
-		assertDirElementCount(t, appStateDir, 2)
+		assertDirElementCount(t, appStateDir, 1)
+		assert.Len(
+			t,
+			findDirByNamePrefix(
+				t,
+				appStateDir,
+				fmt.Sprintf("%d%s", validPID, state.NameSeparator),
+			),
+			1,
+			"expected 1 dir belonging to PID '%d'",
+			validPID,
+		)
+	})
+
+	t.Run("happy path - stale state", func(t *testing.T) {
+		// given
+		appStateDir := t.TempDir()
+		mockLogger := mocks.NewStateLogger(t)
+
+		staleInstance, err := state.Init(appStateDir, StalePID, mockLogger)
+		require.NoError(t, err)
+		assertDirElementCount(t, appStateDir, 1)
 
 		wantIDs := []string{"a", "b", "c"}
 		mockCleaner := mocks.NewStateCleaner(t)
@@ -51,29 +78,7 @@ func TestCleanupStale(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assertDirElementCount(t, appStateDir, 1)
-		assert.Len(
-			t,
-			findDirByNamePrefix(
-				t,
-				appStateDir,
-				fmt.Sprintf("%d%s", NotPID, state.NameSeparator),
-			),
-			0,
-			"expected no dirs belonging to PID '%d'",
-			1,
-		)
-		assert.Len(
-			t,
-			findDirByNamePrefix(
-				t,
-				appStateDir,
-				fmt.Sprintf("%d%s", validPID, state.NameSeparator),
-			),
-			1,
-			"expected no dirs belonging to PID '%d'",
-			1,
-		)
+		assertDirElementCount(t, appStateDir, 0)
 	})
 
 	t.Run("happy path - ignore unknown dir elements", func(t *testing.T) {
@@ -83,7 +88,7 @@ func TestCleanupStale(t *testing.T) {
 
 		_, err := state.Init(appStateDir, validPID, slog.Default())
 		require.NoError(t, err)
-		_, err = state.Init(appStateDir, NotPID, slog.Default())
+		_, err = state.Init(appStateDir, StalePID, slog.Default())
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 2)
 
@@ -121,17 +126,17 @@ func TestCleanupStale(t *testing.T) {
 		require.NoError(t, err)
 
 		// then
-		assertDirElementCount(t, appStateDir, len(files)+len(dirs)+2-1)
+		assertDirElementCount(t, appStateDir, len(files)+len(dirs)+1)
 		assert.Len(
 			t,
 			findDirByNamePrefix(
 				t,
 				appStateDir,
-				fmt.Sprintf("%d%s", NotPID, state.NameSeparator),
+				fmt.Sprintf("%d%s", StalePID, state.NameSeparator),
 			),
 			0,
 			"expected no dirs belonging to PID '%d'",
-			1,
+			StalePID,
 		)
 		assert.Len(
 			t,
@@ -141,8 +146,9 @@ func TestCleanupStale(t *testing.T) {
 				fmt.Sprintf("%d%s", validPID, state.NameSeparator),
 			),
 			1,
-			"expected no dirs belonging to PID '%d'",
+			"expected %d dirs belonging to PID '%d'",
 			1,
+			validPID,
 		)
 	})
 
@@ -151,7 +157,7 @@ func TestCleanupStale(t *testing.T) {
 		appStateDir := t.TempDir()
 		mockLogger := mocks.NewStateLogger(t)
 
-		staleInstance, err := state.Init(appStateDir, NotPID, mockLogger)
+		staleInstance, err := state.Init(appStateDir, StalePID, mockLogger)
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 1)
 		err = os.Remove(filepath.Join(staleInstance.Dir(), "ids.json"))
@@ -180,11 +186,12 @@ func TestCleanupStale(t *testing.T) {
 			findDirByNamePrefix(
 				t,
 				appStateDir,
-				fmt.Sprintf("%d%s", NotPID, state.NameSeparator),
+				fmt.Sprintf("%d%s", StalePID, state.NameSeparator),
 			),
 			1,
-			"expected no dirs belonging to PID '%d'",
+			"expected %d dirs belonging to PID '%d'",
 			1,
+			StalePID,
 		)
 
 	})
@@ -194,7 +201,7 @@ func TestCleanupStale(t *testing.T) {
 		appStateDir := t.TempDir()
 		mockLogger := mocks.NewStateLogger(t)
 
-		staleInstance, err := state.Init(appStateDir, NotPID, mockLogger)
+		staleInstance, err := state.Init(appStateDir, StalePID, mockLogger)
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 1)
 
@@ -247,7 +254,7 @@ func TestCleanupStale(t *testing.T) {
 		appStateDir := t.TempDir()
 		mockLogger := mocks.NewStateLogger(t)
 
-		staleInstance, err := state.Init(appStateDir, NotPID, mockLogger)
+		staleInstance, err := state.Init(appStateDir, StalePID, mockLogger)
 		require.NoError(t, err)
 		err = os.Chmod(staleInstance.Dir(), 0555)
 		require.NoError(t, err)
@@ -270,7 +277,13 @@ func TestCleanupStale(t *testing.T) {
 		}
 
 		mockLogger.EXPECT().
-			Debug("removing finalized state", "err", mock.Anything).
+			Debug(
+				"finalizing stale state",
+				"name",
+				mock.Anything,
+				"err",
+				mock.Anything,
+			).
 			Once()
 
 		// when
@@ -284,11 +297,12 @@ func TestCleanupStale(t *testing.T) {
 			findDirByNamePrefix(
 				t,
 				appStateDir,
-				fmt.Sprintf("%d%s", NotPID, state.NameSeparator),
+				fmt.Sprintf("%d%s", StalePID, state.NameSeparator),
 			),
 			1,
-			"expected a dir belonging to PID '%d'",
+			"expected %s dir belonging to PID '%d'",
 			1,
+			StalePID,
 		)
 	})
 }
@@ -306,7 +320,7 @@ func TestProcRunning(t *testing.T) {
 		assert.True(t, ok)
 	})
 
-	t.Run("happy path - process does not exits", func(t *testing.T) {
+	t.Run("happy path - process does not exist", func(t *testing.T) {
 		// given
 		wantPID := -1
 

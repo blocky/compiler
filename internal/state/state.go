@@ -3,10 +3,13 @@ package state
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,6 +30,27 @@ func InstanceDir(dirPath string, pid int, id uuid.UUID) string {
 	return filepath.Join(dirPath, instanceDirName)
 }
 
+func FromInstanceDir(dirPath string) (int, uuid.UUID, error) {
+	name := filepath.Base(dirPath)
+
+	parts := strings.Split(name, NameSeparator)
+	if len(parts) != 2 {
+		return -1, uuid.Nil, fmt.Errorf("too many elements: %s", dirPath)
+	}
+
+	pid, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return -1, uuid.Nil, fmt.Errorf("parsing pid: %s", parts[0])
+	}
+
+	ID, err := uuid.Parse(parts[1])
+	if err != nil {
+		return -1, uuid.Nil, fmt.Errorf("parsing uuid: %s", parts[1])
+	}
+
+	return pid, ID, nil
+}
+
 func Init(dirPath string, pID int, log Logger) (*State, error) {
 	s := &State{
 		dir:  InstanceDir(dirPath, pID, uuid.New()),
@@ -35,10 +59,14 @@ func Init(dirPath string, pID int, log Logger) (*State, error) {
 		ids:  make([]string, 0),
 	}
 	if err := s.save(); err != nil {
-		defer func() {
-			_ = s.Remove()
-		}()
-		return nil, fmt.Errorf("saving new state: %w", err)
+		var rErr error
+		if wErr := s.Remove(); wErr != nil {
+			rErr = fmt.Errorf("removing state: %s", wErr)
+		}
+		return nil, errors.Join(
+			fmt.Errorf("saving new state: %w", err),
+			rErr,
+		)
 	}
 	return s, nil
 }
@@ -85,6 +113,9 @@ func (s *State) readMetadata() error {
 	}{}
 	if err = json.Unmarshal(bytes, &metadata); err != nil {
 		return fmt.Errorf("unmarshaling metadata: %w", err)
+	}
+	if metadata.Time.IsZero() {
+		return fmt.Errorf("metadata is empty")
 	}
 	s.time = metadata.Time
 	return nil
@@ -160,8 +191,7 @@ func (s *State) Time() time.Time {
 	return s.time
 }
 
-func (s *State) CleanIDs(cleaner Cleaner) {
-	ctx := context.Background()
+func (s *State) CleanIDs(ctx context.Context, cleaner Cleaner) {
 	var cleanedIDs []string
 	for _, ID := range s.IDs() {
 		if err := cleaner.CleanUp(ctx, ID); err != nil {
@@ -178,10 +208,11 @@ func (s *State) CleanIDs(cleaner Cleaner) {
 }
 
 func (s *State) Finalize(cleaner Cleaner) error {
-	s.CleanIDs(cleaner)
+	ctx := context.Background()
+	s.CleanIDs(ctx, cleaner)
 	if len(s.IDs()) == 0 {
 		if err := s.Remove(); err != nil {
-			s.log.Debug("removing finalized state", "err", err.Error())
+			return fmt.Errorf("removing finalized state: %w", err)
 		}
 	}
 	return nil

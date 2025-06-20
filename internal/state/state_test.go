@@ -15,7 +15,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/blocky/compiler/internal/state"
@@ -45,6 +44,74 @@ func TestInstanceDir(t *testing.T) {
 			),
 		),
 	)
+}
+
+func TestFromInstanceDir(t *testing.T) {
+
+	for name, tc := range map[string]struct {
+		dirPath  string
+		wantPID  int
+		wantUUID string
+	}{
+		"happy path - relative path": {
+			dirPath:  "123.1c803071-f0e4-4ae1-b3d3-b7f04b3c0ee9",
+			wantPID:  123,
+			wantUUID: "1c803071-f0e4-4ae1-b3d3-b7f04b3c0ee9",
+		},
+		"happy path - absolute path": {
+			dirPath:  "/789.2d903071-f0e4-4be1-b3d3-b7f04b3c0dd9/123.1c803071-f0e4-4ae1-b3d3-b7f04b3c0ee9",
+			wantPID:  123,
+			wantUUID: "1c803071-f0e4-4ae1-b3d3-b7f04b3c0ee9",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			// when
+			gotPID, gotUUID, err := state.FromInstanceDir(tc.dirPath)
+
+			// then
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantPID, gotPID)
+			assert.Equal(t, tc.wantUUID, gotUUID.String())
+		})
+	}
+
+	for name, tc := range map[string]struct {
+		dirPath string
+		errMsg  string
+	}{
+		"too many elements - relative path": {
+			dirPath: "one.two.three",
+			errMsg:  "too many elements",
+		},
+		"too many elements - absolute path": {
+			dirPath: "/a.b/c/one.two.three",
+			errMsg:  "too many elements",
+		},
+		"error parsing pid - relative path": {
+			dirPath: "pid.uuid",
+			errMsg:  "parsing pid",
+		},
+		"error parsing pid - absolute path": {
+			dirPath: "/123.abc/pid.uuid",
+			errMsg:  "parsing pid",
+		},
+		"error parsing uuid - relative path": {
+			dirPath: "123.uuid",
+			errMsg:  "parsing uuid",
+		},
+		"error parsing uuid - absolute path": {
+			dirPath: "/123.abc/123.uuid",
+			errMsg:  "parsing uuid",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			// when
+			_, _, err := state.FromInstanceDir(tc.dirPath)
+
+			// then
+			require.Error(t, err)
+		})
+	}
 }
 
 func assertFileExistsByName(t *testing.T, dir string, fileName string) {
@@ -193,7 +260,7 @@ func TestInit(t *testing.T) {
 			assertDirElementCount(t, appStateDir, 2)
 			require.NotEmpty(t, gotInstance1)
 			require.NotEmpty(t, gotInstance2)
-			require.LessOrEqual(t, gotInstance2.Time(), gotInstance2.Time())
+			require.LessOrEqual(t, gotInstance1.Time(), gotInstance2.Time())
 			require.NotEqual(t, gotInstance2.Dir(), gotInstance1.Dir())
 
 			instances := []*state.State{gotInstance1, gotInstance2}
@@ -325,6 +392,33 @@ func TestLoad(t *testing.T) {
 		assert.ErrorContains(t, err, "loading metadata")
 	})
 
+	t.Run("empty metadata", func(t *testing.T) {
+		// given
+		appStateDir := t.TempDir()
+		appPID := 1
+
+		initializedInstance, err := state.Init(
+			appStateDir,
+			appPID,
+			slog.Default(),
+		)
+		require.NoError(t, err)
+
+		err = os.WriteFile(
+			filepath.Join(initializedInstance.Dir(), "metadata.json"),
+			[]byte("{}"),
+			0600,
+		)
+		require.NoError(t, err)
+
+		// when
+		_, err = state.Load(initializedInstance.Dir(), slog.Default())
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "metadata is empty")
+	})
+
 	t.Run("error loading ids", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
@@ -369,14 +463,15 @@ func TestState_Remove(t *testing.T) {
 	t.Run("happy path - two instances (different PIDs)", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
+		PID1, PID2 := 1, 2
 
-		sut, err := state.Init(appStateDir, 1, slog.Default())
+		sut, err := state.Init(appStateDir, PID1, slog.Default())
 		require.NoError(t, err)
-		assertDirElementCount(t, appStateDir, 1)
+		assertDirElementCount(t, appStateDir, PID1)
 
-		_, err = state.Init(appStateDir, 2, slog.Default())
+		_, err = state.Init(appStateDir, PID2, slog.Default())
 		require.NoError(t, err)
-		assertDirElementCount(t, appStateDir, 2)
+		assertDirElementCount(t, appStateDir, PID2)
 
 		// when
 		gotErr := sut.Remove()
@@ -389,11 +484,11 @@ func TestState_Remove(t *testing.T) {
 			findDirByNamePrefix(
 				t,
 				appStateDir,
-				fmt.Sprintf("%d%s", 1, state.NameSeparator),
+				fmt.Sprintf("%d%s", PID1, state.NameSeparator),
 			),
 			0,
 			"expected no dirs belonging to PID '%d'",
-			1,
+			PID1,
 		)
 	})
 
@@ -455,10 +550,10 @@ func TestState_AddID(t *testing.T) {
 			appStateDir := t.TempDir()
 			wantIDs := []string{"a", "b", "c"}
 
-			sut, err := state.Init(appStateDir, tc.sutPID, slog.Default())
+			instance1, err := state.Init(appStateDir, tc.sutPID, slog.Default())
 			require.NoError(t, err)
 
-			otherInstance, err := state.Init(
+			instance2, err := state.Init(
 				appStateDir,
 				tc.otherPID,
 				slog.Default(),
@@ -467,13 +562,13 @@ func TestState_AddID(t *testing.T) {
 
 			// when
 			for _, id := range wantIDs {
-				require.NoError(t, sut.AddID(id))
+				require.NoError(t, instance1.AddID(id))
 			}
 
 			// then
-			assert.Equal(t, wantIDs, sut.IDs())
-			assertIDsEqual(t, sut.Dir(), wantIDs)
-			assertIDsEqual(t, otherInstance.Dir(), []string{})
+			assert.Equal(t, wantIDs, instance1.IDs())
+			assertIDsEqual(t, instance1.Dir(), wantIDs)
+			assertIDsEqual(t, instance2.Dir(), []string{})
 		})
 	}
 }
@@ -523,10 +618,10 @@ func TestState_RemoveID(t *testing.T) {
 			IDsToRemove := []string{"a", "b"}
 			wantIDs := []string{"c"}
 
-			sut, err := state.Init(appStateDir, tc.sutPID, slog.Default())
+			instance1, err := state.Init(appStateDir, tc.sutPID, slog.Default())
 			require.NoError(t, err)
 
-			otherInstance, err := state.Init(
+			instance2, err := state.Init(
 				appStateDir,
 				tc.otherPID,
 				slog.Default(),
@@ -534,19 +629,19 @@ func TestState_RemoveID(t *testing.T) {
 			require.NoError(t, err)
 
 			for _, id := range IDsToAdd {
-				require.NoError(t, sut.AddID(id))
-				require.NoError(t, otherInstance.AddID(id))
+				require.NoError(t, instance1.AddID(id))
+				require.NoError(t, instance2.AddID(id))
 			}
 
 			// when
 			for _, id := range IDsToRemove {
-				require.NoError(t, sut.RemoveID(id))
+				require.NoError(t, instance1.RemoveID(id))
 			}
 
 			// then
-			assert.Equal(t, wantIDs, sut.IDs())
-			assertIDsEqual(t, sut.Dir(), wantIDs)
-			assertIDsEqual(t, otherInstance.Dir(), IDsToAdd)
+			assert.Equal(t, wantIDs, instance1.IDs())
+			assertIDsEqual(t, instance1.Dir(), wantIDs)
+			assertIDsEqual(t, instance2.Dir(), IDsToAdd)
 		})
 	}
 }
@@ -554,6 +649,7 @@ func TestState_RemoveID(t *testing.T) {
 func TestState_CleanIDs(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		// given
+		ctx := context.Background()
 		appStateDir := t.TempDir()
 		validPID := os.Getpid()
 
@@ -574,7 +670,7 @@ func TestState_CleanIDs(t *testing.T) {
 		}
 
 		// when
-		sut.CleanIDs(mockCleaner)
+		sut.CleanIDs(ctx, mockCleaner)
 
 		// then
 		require.NoError(t, err)
@@ -585,6 +681,7 @@ func TestState_CleanIDs(t *testing.T) {
 
 	t.Run("error cleaning some IDs", func(t *testing.T) {
 		// given
+		ctx := context.Background()
 		appStateDir := t.TempDir()
 		validPID := os.Getpid()
 		mockLogger := mocks.NewStateLogger(t)
@@ -617,7 +714,7 @@ func TestState_CleanIDs(t *testing.T) {
 			Once()
 
 		// when
-		sut.CleanIDs(mockCleaner)
+		sut.CleanIDs(ctx, mockCleaner)
 
 		// then
 		assert.Equal(t, wantErroringIDs, sut.IDs())
@@ -727,15 +824,13 @@ func TestState_Finalize(t *testing.T) {
 				Return(nil).
 				Once()
 		}
-		mockLogger.EXPECT().
-			Debug("removing finalized state", "err", mock.Anything).
-			Once()
 
 		// when
 		err = sut.Finalize(mockCleaner)
 
 		// then
-		require.NoError(t, err)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "removing finalized state")
 		assertDirElementCount(t, appStateDir, 1)
 	})
 }

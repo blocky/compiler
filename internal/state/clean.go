@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"syscall"
 )
 
@@ -36,12 +34,7 @@ func CleanupStale(dirPath string, cleaner Cleaner, log Logger) error {
 			continue
 		}
 
-		parts := strings.Split(e.Name(), NameSeparator)
-		if len(parts) != 2 {
-			continue
-		}
-
-		pid, err := strconv.Atoi(parts[0])
+		pid, _, err := FromInstanceDir(filepath.Join(dirPath, e.Name()))
 		if err != nil {
 			continue
 		}

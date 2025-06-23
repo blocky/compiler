@@ -3,6 +3,7 @@ module github.com/blocky/compiler
 go 1.23.7
 
 require (
+	github.com/google/uuid v1.6.0
 	github.com/moby/moby v28.2.2+incompatible
 	github.com/otiai10/copy v1.14.1
 	github.com/rogpeppe/go-internal v1.13.1

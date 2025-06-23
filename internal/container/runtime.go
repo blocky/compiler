@@ -124,7 +124,7 @@ func (r *Runtime) Run(
 	ok, err := r.Compatible(ctx)
 	switch {
 	case err != nil:
-		return zeroRet, err
+		return zeroRet, fmt.Errorf("checking compatibility: %w", err)
 	case !ok:
 		return zeroRet, fmt.Errorf("runtime not compatible")
 	}
@@ -136,7 +136,7 @@ func (r *Runtime) Run(
 
 	cID, err := r.Launch(ctx, cfg)
 	if err != nil {
-		return zeroRet, err
+		return zeroRet, fmt.Errorf("launching container: %w", err)
 	}
 	defer func() {
 		err := r.CleanUp(ctx, cID)
@@ -153,7 +153,7 @@ func (r *Runtime) Run(
 	r.log.Debug(output.StdOut)
 	r.log.Debug(output.StdErr)
 	if output.Status != OK {
-		return Output{}, fmt.Errorf(
+		return zeroRet, fmt.Errorf(
 			"running container, status: '%d', msg: '%s', stderr: '%s'",
 			output.Status,
 			output.ErrorMsg,

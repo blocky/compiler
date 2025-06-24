@@ -13,26 +13,32 @@ import (
 	"github.com/blocky/compiler/internal/state"
 )
 
+func cleanUp(s *state.State, cleaner state.Cleaner, log state.Logger) error {
+	if err := s.Finalize(cleaner); err != nil {
+		return fmt.Errorf("failed to clean-up state: %w", err)
+	}
+	if err := state.CleanupStale(StateDir(), cleaner, log); err != nil {
+		return fmt.Errorf("failed to clean up stale state: %w", err)
+	}
+	return nil
+}
+
 var buildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "Build a WASM binary",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger := slog.Default()
-
-		s, err := state.Init(StateDir(), os.Getpid(), logger)
+		log := slog.Default()
+		s, err := state.Init(StateDir(), os.Getpid(), log)
 		if err != nil {
 			return fmt.Errorf("initializing state: %w", err)
 		}
-		runtime := container.NewRuntime(s, logger)
-
+		runtime := container.NewRuntime(s, log)
 		defer func() {
-			err := s.Finalize(runtime)
-			if err != nil {
-				logger.Warn("Failed to clean-up state", "err", err.Error())
+			if err := cleanUp(s, runtime, log); err != nil {
+				log.Warn("clean-up failed:", "err", err.Error())
 			}
 		}()
-
 		return bkyc.CompileGo(
 			context.Background(),
 			runtime,

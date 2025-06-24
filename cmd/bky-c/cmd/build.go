@@ -37,13 +37,13 @@ func init() {
 		&cachePath,
 		"cache-path",
 		"",
-		"absolute path to the build cache directory",
+		"absolute path to the dot cache directory",
 	)
 	buildCmd.Flags().StringVar(
 		&goPath,
 		"go-path",
 		"",
-		"absolute path to the go cache directory",
+		"absolute path to the go path directory",
 	)
 	rootCmd.AddCommand(buildCmd)
 }

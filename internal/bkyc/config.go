@@ -34,8 +34,7 @@ func NewGoContainerCfg(
 			`-no-debug `+
 			`-opt=z `+
 			`%s `+
-			`&& `+
-			`touch -d "@%s" /out/%s`,
+			`&& touch -d "@%s" /out/%s`,
 		outFile,
 		inFile,
 		FixedSourceDateEpoch,

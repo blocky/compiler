@@ -14,10 +14,12 @@ type ContainerRunner interface {
 func CompileGo(
 	ctx context.Context,
 	r ContainerRunner,
+	cacheDir string,
+	goDir string,
 	inPath string,
 	outPath string,
 ) error {
-	goCfg, err := NewGoCompilerCfg(inPath, outPath)
+	goCfg, err := NewGoCompilerCfg(cacheDir, goDir, inPath, outPath)
 	if err != nil {
 		return fmt.Errorf("creating go compilation config: %w", err)
 	}

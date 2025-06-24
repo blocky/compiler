@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"
@@ -67,7 +68,7 @@ func Test_CompileGo(t *testing.T) {
 		removeContainersByPrefix(bkyc.BkycPrefix)
 	})
 
-	t.Run("happy path", func(t *testing.T) {
+	t.Run("happy path - no cache", func(t *testing.T) {
 		// given
 		projRootDir := t.TempDir()
 		copyTestData(
@@ -78,6 +79,8 @@ func Test_CompileGo(t *testing.T) {
 
 		outDir := createTempDir(t, 0777)
 
+		cachePath := ""
+		goPath := ""
 		inPath := filepath.Join(projRootDir, "main.go")
 		outPath := filepath.Join(outDir, "got.wasm")
 
@@ -85,6 +88,8 @@ func Test_CompileGo(t *testing.T) {
 		gotErr := bkyc.CompileGo(
 			context.Background(),
 			container.NewRuntime(slog.Default()),
+			cachePath,
+			goPath,
 			inPath,
 			outPath,
 		)
@@ -98,6 +103,63 @@ func Test_CompileGo(t *testing.T) {
 		)
 	})
 
+	t.Run("happy path - cache", func(t *testing.T) {
+		// given
+		projRootDir := t.TempDir()
+		copyTestData(
+			t,
+			"./testdata/hello-world-hash-unvendored-go/in",
+			projRootDir,
+		)
+
+		outDir := createTempDir(t, 0777)
+
+		cachePath := createTempDir(t, 0777)
+		goPath := createTempDir(t, 0777)
+		inPath := filepath.Join(projRootDir, "main.go")
+		outPath := filepath.Join(outDir, "got.wasm")
+
+		// when
+		start := time.Now()
+		gotErr := bkyc.CompileGo(
+			context.Background(),
+			container.NewRuntime(slog.Default()),
+			cachePath,
+			goPath,
+			inPath,
+			outPath,
+		)
+		emptyCacheTime := time.Since(start)
+
+		assert.NoError(t, gotErr)
+		assertFilesEqual(
+			t,
+			"./testdata/hello-world-hash-unvendored-go/want/x.wasm",
+			outPath,
+		)
+
+		start = time.Now()
+		gotErr = bkyc.CompileGo(
+			context.Background(),
+			container.NewRuntime(slog.Default()),
+			cachePath,
+			goPath,
+			inPath,
+			outPath,
+		)
+		fullCacheTime := time.Since(start)
+
+		assert.NoError(t, gotErr)
+		assertFilesEqual(
+			t,
+			"./testdata/hello-world-hash-unvendored-go/want/x.wasm",
+			outPath,
+		)
+
+		// then
+		assert.Less(t, fullCacheTime, emptyCacheTime)
+	})
+
 	t.Run("incorrect source code", func(t *testing.T) {
 		// given
 		projRootDir := t.TempDir()
@@ -109,6 +171,8 @@ func Test_CompileGo(t *testing.T) {
 
 		outDir := createTempDir(t, 0777)
 
+		cachePath := ""
+		goPath := ""
 		inPath := filepath.Join(projRootDir, "main.go")
 		outPath := filepath.Join(outDir, "got.wasm")
 
@@ -116,6 +180,8 @@ func Test_CompileGo(t *testing.T) {
 		gotErr := bkyc.CompileGo(
 			context.Background(),
 			container.NewRuntime(slog.Default()),
+			cachePath,
+			goPath,
 			inPath,
 			outPath,
 		)
@@ -139,6 +205,8 @@ func Test_CompileGo(t *testing.T) {
 
 		copyTestData(t, "./testdata/no-main-file-go/in", projRootDir)
 
+		cachePath := ""
+		goPath := ""
 		inPath := filepath.Join(projRootDir, "main.go")
 		outPath := filepath.Join(outDir, "got.wasm")
 
@@ -146,6 +214,8 @@ func Test_CompileGo(t *testing.T) {
 		gotErr := bkyc.CompileGo(
 			context.Background(),
 			container.NewRuntime(slog.Default()),
+			cachePath,
+			goPath,
 			inPath,
 			outPath,
 		)
@@ -167,6 +237,8 @@ func Test_CompileGo(t *testing.T) {
 
 		copyTestData(t, "./testdata/no-mod-file-go/in", projRootDir)
 
+		cachePath := ""
+		goPath := ""
 		inPath := filepath.Join(projRootDir, "main.go")
 		outPath := filepath.Join(outDir, "got.wasm")
 
@@ -174,6 +246,8 @@ func Test_CompileGo(t *testing.T) {
 		gotErr := bkyc.CompileGo(
 			context.Background(),
 			container.NewRuntime(slog.Default()),
+			cachePath,
+			goPath,
 			inPath,
 			outPath,
 		)
@@ -190,6 +264,8 @@ func Test_CompileGo(t *testing.T) {
 		projRootDir := t.TempDir()
 		copyTestData(t, "./testdata/hello-world-hash-unvendored-go/in", projRootDir)
 
+		cachePath := ""
+		goPath := ""
 		inPath := filepath.Join(projRootDir, "main.go")
 		outPath := filepath.Join("./no-such-folder-exists", "got.wasm")
 
@@ -197,6 +273,8 @@ func Test_CompileGo(t *testing.T) {
 		gotErr := bkyc.CompileGo(
 			context.Background(),
 			container.NewRuntime(slog.Default()),
+			cachePath,
+			goPath,
 			inPath,
 			outPath,
 		)

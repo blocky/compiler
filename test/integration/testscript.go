@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/rogpeppe/go-internal/testscript"
@@ -152,7 +153,24 @@ func (e *ProjectTest) ImportEnvVars(envKeys []string) *ProjectTest {
 		}
 		return nil
 	}
+	e.setupFuncs = append(e.setupFuncs, setupFunc)
+	return e
+}
 
+func (e *ProjectTest) SetEnvVar(key, value string) *ProjectTest {
+	setupFunc := func(env *testscript.Env) error {
+		env.Setenv(key, value)
+		return nil
+	}
+	e.setupFuncs = append(e.setupFuncs, setupFunc)
+	return e
+}
+
+func (e *ProjectTest) SetXdgHomeDir(path string) *ProjectTest {
+	setupFunc := func(env *testscript.Env) error {
+		env.Setenv("XDG_STATE_HOME", filepath.Join(env.WorkDir, path))
+		return nil
+	}
 	e.setupFuncs = append(e.setupFuncs, setupFunc)
 	return e
 }
@@ -164,15 +182,47 @@ func assertBinEqual(ts *testscript.TestScript, neg bool, args []string) {
 	}
 	want, err := os.ReadFile(ts.MkAbs(args[0]))
 	if err != nil {
-		ts.Fatalf("failed to read 'want' file %s: %v", args[0], err)
+		ts.Fatalf("reading 'want' file '%s': %v", args[0], err)
 	}
 	got, err := os.ReadFile(ts.MkAbs(args[1]))
 	if err != nil {
-		ts.Fatalf("failed to read 'got' file %s: %v", args[1], err)
+		ts.Fatalf("reading 'got' file '%s': %v", args[1], err)
 	}
 	if bytes.Equal(want, got) == neg {
 		msg := map[bool]string{true: "equal", false: "not equal"}[neg]
 		ts.Fatalf("file '%s' and file '%s' are '%s'", want, got, msg)
+	}
+}
+
+func assertDirElementCount(ts *testscript.TestScript, neg bool, args []string) {
+	if neg {
+		ts.Fatalf("negation not supported")
+	}
+	expArgs := 2
+	if len(args) != expArgs {
+		ts.Fatalf("expecting %d args, but got %d", expArgs, len(args))
+	}
+	stat, err := os.Stat(ts.MkAbs(args[0]))
+	if err != nil {
+		ts.Fatalf("getting stat for '%s': %v", args[0], err)
+	}
+	if !stat.IsDir() {
+		ts.Fatalf("not a directory: '%s'", args[0])
+	}
+	entries, err := os.ReadDir(ts.MkAbs(args[0]))
+	if err != nil {
+		ts.Fatalf("reading dir '%s': %v", args[0], err)
+	}
+	expCount, err := strconv.Atoi(args[1])
+	if err != nil {
+		ts.Fatalf("expecting numeric value '%s': %v", args[0], err)
+	}
+	if len(args) != expArgs {
+		ts.Fatalf(
+			"expected dir entry count of '%d' to be equal to %d",
+			len(entries),
+			expCount,
+		)
 	}
 }
 
@@ -186,8 +236,10 @@ func (e *ProjectTest) RunScript(scriptFile string) {
 		return nil
 	}
 	e.params.Cmds = map[string]func(ts *testscript.TestScript, neg bool, args []string){
-		"bin-eq": assertBinEqual,
+		"bin-eq":         assertBinEqual,
+		"dir-elem-count": assertDirElementCount,
 	}
 	e.params.Files = []string{scriptFile}
+	//testscript.RunMain() todo: check this out
 	testscript.Run(e.t, e.params)
 }

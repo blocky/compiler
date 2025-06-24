@@ -19,23 +19,31 @@ type Client interface {
 	Remove(context.Context, string) error
 }
 
-func NewRuntimeFromRaw(client Client, log Logger) *Runtime {
+type Memory interface {
+	AddID(string) error
+	RemoveID(string) error
+}
+
+func NewRuntimeFromRaw(client Client, mem Memory, log Logger) *Runtime {
 	return &Runtime{
 		client: client,
 		log:    log,
+		mem:    mem,
 	}
 }
 
-func NewRuntime(log Logger) *Runtime {
+func NewRuntime(mem Memory, log Logger) *Runtime {
 	return &Runtime{
 		client: NewAPIClientWithLogger(log),
 		log:    log,
+		mem:    mem,
 	}
 }
 
 type Runtime struct {
 	client Client
 	log    Logger
+	mem    Memory
 }
 
 func (r *Runtime) Compatible(ctx context.Context) (bool, error) {
@@ -67,6 +75,9 @@ func (r *Runtime) Launch(
 	cID, err := r.client.Create(ctx, cfg)
 	if err != nil {
 		return "", fmt.Errorf("creating container: %w", err)
+	}
+	if err := r.mem.AddID(cID); err != nil {
+		return "", fmt.Errorf("saving container ID to memory '%s': %w", cID, err)
 	}
 	if err := r.client.Start(ctx, cID); err != nil {
 		return "", fmt.Errorf("starting container: %w", err)
@@ -112,6 +123,9 @@ func (r *Runtime) CleanUp(
 	}
 	if err := r.client.Remove(ctx, cID); err != nil {
 		return fmt.Errorf("removing container: %w", err)
+	}
+	if err := r.mem.RemoveID(cID); err != nil {
+		return fmt.Errorf("removing container ID from memory '%s': %w", cID, err)
 	}
 	return nil
 }

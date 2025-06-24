@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/otiai10/copy"
 	"github.com/rogpeppe/go-internal/testscript"
 )
 
@@ -69,37 +70,26 @@ func (e *ProjectTest) ChownIf(ok Condition, relPath string, uid, gid int) *Proje
 func (e *ProjectTest) CopyDir(relPath string) *ProjectTest {
 	setupFunc := func(env *testscript.Env) error {
 		srcDir := filepath.Join(e.projectDir, relPath)
-		return filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return fmt.Errorf("failed to walk dir %s: %w", srcDir, err)
-			}
-			if info.IsDir() {
-				return nil
-			}
-			relPath, err := filepath.Rel(filepath.Dir(srcDir), path)
-			if err != nil {
-				return fmt.Errorf("failed to get relative path of %s: %w", path, err)
-			}
+		dstDir := filepath.Join(env.WorkDir, relPath)
+		return copy.Copy(srcDir, dstDir)
+	}
+	e.setupFuncs = append(e.setupFuncs, setupFunc)
+	return e
+}
 
-			src := filepath.Join(e.projectDir, relPath)
-			dst := filepath.Join(env.WorkDir, relPath)
-			dstDir := filepath.Dir(dst)
-			if err := os.MkdirAll(dstDir, 0755); err != nil {
-				msg := "failed to create destination directory %s: %w"
-				return fmt.Errorf(msg, dstDir, err)
-			}
-
-			srcContent, err := os.ReadFile(src)
-			if err != nil {
-				return fmt.Errorf("failed to read source file %s: %w", src, err)
-			}
-
-			if err := os.WriteFile(dst, srcContent, 0644); err != nil {
-				msg := "failed to write destination file %s: %w"
-				return fmt.Errorf(msg, dst, err)
-			}
-			return nil
-		})
+func (e *ProjectTest) CopyDirToAppStateDir(srcRelPath string) *ProjectTest {
+	setupFunc := func(env *testscript.Env) error {
+		srcDir := filepath.Join(e.projectDir, srcRelPath)
+		xdgStateHomeDir := env.Getenv("XDG_STATE_HOME")
+		if xdgStateHomeDir == "" {
+			return fmt.Errorf("XDG_STATE_HOME environment variable not set")
+		}
+		cliAppName := env.Getenv("CLI_APP_NAME")
+		if cliAppName == "" {
+			return fmt.Errorf("CLI_APP_NAME environment variable not set")
+		}
+		dstDir := filepath.Join(xdgStateHomeDir, cliAppName, filepath.Base(srcRelPath))
+		return copy.Copy(srcDir, dstDir)
 	}
 	e.setupFuncs = append(e.setupFuncs, setupFunc)
 	return e
@@ -166,7 +156,7 @@ func (e *ProjectTest) SetEnvVar(key, value string) *ProjectTest {
 	return e
 }
 
-func (e *ProjectTest) SetXdgHomeDir(path string) *ProjectTest {
+func (e *ProjectTest) SetXdgStateHomeDir(path string) *ProjectTest {
 	setupFunc := func(env *testscript.Env) error {
 		env.Setenv("XDG_STATE_HOME", filepath.Join(env.WorkDir, path))
 		return nil
@@ -217,9 +207,9 @@ func assertDirElementCount(ts *testscript.TestScript, neg bool, args []string) {
 	if err != nil {
 		ts.Fatalf("expecting numeric value '%s': %v", args[0], err)
 	}
-	if len(args) != expArgs {
+	if len(entries) != expCount {
 		ts.Fatalf(
-			"expected dir entry count of '%d' to be equal to %d",
+			"expecting dir entry count of '%d' to be equal to %d",
 			len(entries),
 			expCount,
 		)
@@ -240,6 +230,5 @@ func (e *ProjectTest) RunScript(scriptFile string) {
 		"dir-elem-count": assertDirElementCount,
 	}
 	e.params.Files = []string{scriptFile}
-	//testscript.RunMain() todo: check this out
 	testscript.Run(e.t, e.params)
 }

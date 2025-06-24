@@ -37,7 +37,7 @@ func TestBuild(t *testing.T) {
 		return NewProjectTest(t, projectDir).
 			BuildIfMissing(CLIPath(), cmd.CliName).
 			MakeDir("xdgHome").
-			SetXdgHomeDir("xdgHome").
+			SetXdgStateHomeDir("xdgHome").
 			MakeDir("got").
 			ChownIf(runsAsRoot, "got", tinyGoUID, tinyGoGID).
 			ImportEnvVars(envVars).
@@ -61,6 +61,11 @@ func TestBuild(t *testing.T) {
 		prepareEnv(projectDir).
 			CopyDir("in").
 			CopyDir("want").
+			CopyDirToAppStateDir(filepath.Join(
+				"state",
+				"stale",
+				"-1.1d8b0878-b4d7-4bdc-bc1d-2c08ce271109"),
+			).
 			RunScript(filepath.Join(scriptDir, projectToBuild, "build-state-mgmt.txtar"))
 	})
 
@@ -74,13 +79,18 @@ func TestBuild(t *testing.T) {
 			RunScript(filepath.Join(scriptDir, projectToBuild, "build-missing-args.txtar"))
 	})
 
-	t.Run("state lifecycle is managed", func(t *testing.T) {
+	t.Run("canceling is handled", func(t *testing.T) {
 		projectToBuild := "hello-world-hash-unvendored-go"
 		projectDir := filepath.Join(srcCodeDir, projectToBuild)
 
 		prepareEnv(projectDir).
 			CopyDir("in").
 			CopyDir("want").
+			CopyDirToAppStateDir(filepath.Join(
+				"state",
+				"stale",
+				"-1.1d8b0878-b4d7-4bdc-bc1d-2c08ce271109"),
+			).
 			RunScript(filepath.Join(scriptDir, projectToBuild, "build-cancel.txtar"))
 	})
 

@@ -74,4 +74,14 @@ func TestBuild(t *testing.T) {
 			RunScript(filepath.Join(scriptDir, projectToBuild, "build-missing-args.txtar"))
 	})
 
+	t.Run("state lifecycle is managed", func(t *testing.T) {
+		projectToBuild := "hello-world-hash-unvendored-go"
+		projectDir := filepath.Join(srcCodeDir, projectToBuild)
+
+		prepareEnv(projectDir).
+			CopyDir("in").
+			CopyDir("want").
+			RunScript(filepath.Join(scriptDir, projectToBuild, "build-cancel.txtar"))
+	})
+
 }

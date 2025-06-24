@@ -143,8 +143,7 @@ func (r *Runtime) Run(
 		return zeroRet, fmt.Errorf("runtime not compatible")
 	}
 
-	err = r.GetImage(ctx, cfg.Image)
-	if err != nil {
+	if err := r.GetImage(ctx, cfg.Image); err != nil {
 		return zeroRet, fmt.Errorf("getting image '%s': %w", cfg.Image, err)
 	}
 
@@ -153,9 +152,8 @@ func (r *Runtime) Run(
 		return zeroRet, fmt.Errorf("launching container: %w", err)
 	}
 	defer func() {
-		err := r.CleanUp(ctx, cID)
-		if err != nil {
-			r.log.Warn("cleaning up container", "err", err)
+		if err := r.CleanUp(ctx, cID); err != nil {
+			r.log.Debug("cleaning up container", "err", err)
 		}
 	}()
 

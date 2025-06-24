@@ -2,10 +2,10 @@
 ! exec bky-c build in/main.go
 
 # [check] assert stderr contains error output
-stderr 'accepts 2 arg\(s\), received 1'
+stderr 'requires at least 2 arg\(s\), only received 1'
 
 # [execute] build with two missing args
 ! exec bky-c build
 
 # [check] assert stderr contains error output
-stderr 'accepts 2 arg\(s\), received 0'
+stderr 'requires at least 2 arg\(s\), only received 0'

@@ -856,7 +856,7 @@ func TestRuntime_Run(t *testing.T) {
 			Return().
 			Once()
 		mockLogger.EXPECT().
-			Warn("cleaning up container", "err", mock.Anything).
+			Debug("cleaning up container", "err", mock.Anything).
 			Once()
 
 		mockMemory.EXPECT().

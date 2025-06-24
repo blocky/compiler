@@ -16,8 +16,9 @@ func StateDir() string {
 }
 
 var rootCmd = &cobra.Command{
-	Use:          CliName,
-	SilenceUsage: true,
+	Use:           CliName,
+	SilenceUsage:  true,
+	SilenceErrors: true,
 }
 
 func Execute() error {

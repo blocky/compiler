@@ -10,6 +10,7 @@ const OK = 0
 type Client interface {
 	Compatible(context.Context) (bool, error)
 	ImageExists(context.Context, string) (bool, error)
+	ContainerExists(context.Context, string) (bool, error)
 	PullImage(context.Context, string) error
 	Create(context.Context, Config) (string, error)
 	Start(context.Context, string) error
@@ -107,6 +108,14 @@ func (r *Runtime) CleanUp(
 	ctx context.Context,
 	cID string,
 ) error {
+	exists, err := r.client.ContainerExists(ctx, cID)
+	switch {
+	case err != nil:
+		return fmt.Errorf("checking container status '%s': %w", cID, err)
+	case !exists:
+		r.log.Debug("Container doesn't exist", "id", cID)
+		return nil
+	}
 	if err := r.client.Stop(ctx, cID); err != nil {
 		r.log.Debug("stopping container", "err", err.Error())
 	}
@@ -139,8 +148,7 @@ func (r *Runtime) Run(
 		return zeroRet, fmt.Errorf("launching container: %w", err)
 	}
 	defer func() {
-		err := r.CleanUp(ctx, cID)
-		if err != nil {
+		if err := r.CleanUp(ctx, cID); err != nil {
 			r.log.Warn("cleaning up container", "err", err)
 		}
 	}()

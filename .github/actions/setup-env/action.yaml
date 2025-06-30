@@ -18,8 +18,3 @@ runs:
       shell: bash
       run: |
         git config --global url.https://${{ inputs.gh-access-token }}@github.com/.insteadOf https://github.com/
-
-    - name: Setup docker buildx
-      shell: bash
-      run: |
-        make container-setup

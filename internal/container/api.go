@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"slices"
 	"strconv"
 
@@ -50,7 +49,7 @@ type APIClient struct {
 func NewAPIClient() *APIClient {
 	return &APIClient{
 		Doer:    newUnixSockHTTPClient(),
-		BaseURL: "http://placeholder.for.unix.sock",
+		BaseURL: "http://unix.sock",
 		Log:     slog.Default(),
 	}
 }
@@ -58,28 +57,16 @@ func NewAPIClient() *APIClient {
 func NewAPIClientWithLogger(log Logger) *APIClient {
 	return &APIClient{
 		Doer:    newUnixSockHTTPClient(),
-		BaseURL: "http://placeholder.for.unix.sock",
+		BaseURL: "http://unix.sock",
 		Log:     log,
 	}
-}
-
-func getDaemonSocketPath() string {
-	defaultSocket := "/var/run/docker.sock"
-	if host := os.Getenv("DOCKER_HOST"); host != empty {
-		dh, err := url.Parse(host)
-		if err != nil || dh.Scheme != "unix" {
-			return defaultSocket
-		}
-		return dh.Path
-	}
-	return defaultSocket
 }
 
 func newUnixSockHTTPClient() *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", getDaemonSocketPath())
+				return net.Dial("unix", GetDaemonSocketPath())
 			},
 		},
 	}

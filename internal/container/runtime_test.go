@@ -360,7 +360,7 @@ func TestRuntime_CleanUp(t *testing.T) {
 		require.NoError(t, gotErr)
 	})
 
-	t.Run("container does not exists", func(t *testing.T) {
+	t.Run("container does not exist", func(t *testing.T) {
 		// given
 		wantID := "testid"
 		ctx := context.Background()

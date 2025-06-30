@@ -31,12 +31,11 @@ var buildCmd = &cobra.Command{
 	Short: "Build a WASM binary",
 	Args:  cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx, cancel := signal.NotifyContext(
+		ctx, cancelCtx := signal.NotifyContext(
 			context.Background(),
 			syscall.SIGINT,
 			syscall.SIGTERM,
 		)
-		defer cancel()
 
 		log := slog.Default()
 		s, err := state.Init(StateDir(), os.Getpid(), log)
@@ -47,8 +46,9 @@ var buildCmd = &cobra.Command{
 		runtime := container.NewRuntime(s, log)
 		defer func() {
 			if err := cleanUp(s, runtime, log); err != nil {
-				log.Warn("clean-up failed:", "err", err.Error())
+				log.Error("clean-up failed:", "err", err.Error())
 			}
+			cancelCtx()
 		}()
 
 		err = bkyc.CompileGo(ctx, runtime, args[0], args[1])

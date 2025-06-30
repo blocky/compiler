@@ -33,8 +33,8 @@ type Config struct {
 }
 
 type Logger interface {
+	Error(string, ...any)
 	Debug(string, ...any)
-	Warn(string, ...any)
 }
 
 type HTTPDoer interface {

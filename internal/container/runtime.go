@@ -153,7 +153,7 @@ func (r *Runtime) Run(
 	}
 	defer func() {
 		if err := r.CleanUp(ctx, cID); err != nil {
-			r.log.Debug("cleaning up container", "err", err)
+			r.log.Error("cleaning up container", "err", err)
 		}
 	}()
 

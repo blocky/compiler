@@ -87,7 +87,7 @@ func NewGoCompilerCfg(
 		if err != nil {
 			return zeroRet, fmt.Errorf("finding cache root: %w", err)
 		}
-		cachePath = filepath.Join(cacheRoot, "bkyc")
+		cachePath = filepath.Join(cacheRoot, "bky-c")
 		goPath = filepath.Join(cacheRoot, "go")
 	}
 	return NewGoContainerCfg(cachePath, goPath, inDir, inFile, outDir, outFile), nil

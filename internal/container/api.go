@@ -216,6 +216,33 @@ func (c *APIClient) ImageExists(
 	}
 }
 
+func (c *APIClient) ContainerExists(ctx context.Context, cID string) (bool, error) {
+	resp, err := c.do(
+		ctx,
+		"GET",
+		fmt.Sprintf("/v%s/containers/%s/json", APIVersion, cID),
+		nil,
+		http.StatusOK,
+		http.StatusNotFound,
+	)
+	if err != nil {
+		return false, fmt.Errorf("making container info request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		return true, nil
+	case http.StatusNotFound:
+		return false, nil
+	default:
+		return false, fmt.Errorf(
+			"unknown container info response code: %d",
+			resp.StatusCode,
+		)
+	}
+}
+
 func (c *APIClient) PullImage(ctx context.Context, image string) error {
 	resp, err := c.do(
 		ctx,

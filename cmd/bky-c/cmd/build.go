@@ -10,8 +10,7 @@ import (
 	"github.com/blocky/compiler/internal/container"
 )
 
-var cachePath string
-var goPath string
+var reproducible bool
 
 var buildCmd = &cobra.Command{
 	Use:   "build",
@@ -24,26 +23,19 @@ var buildCmd = &cobra.Command{
 		return bkyc.CompileGo(
 			context.Background(),
 			container.NewRuntime(slog.Default()),
-			cachePath,
-			goPath,
 			inPath,
 			outPath,
+			reproducible,
 		)
 	},
 }
 
 func init() {
-	buildCmd.Flags().StringVar(
-		&cachePath,
-		"cache-path",
-		"",
-		"absolute path to the dot cache directory",
-	)
-	buildCmd.Flags().StringVar(
-		&goPath,
-		"go-path",
-		"",
-		"absolute path to the go path directory",
+	buildCmd.Flags().BoolVar(
+		&reproducible,
+		"reproducible",
+		false,
+		"ignore cached dependencies (default: false)",
 	)
 	rootCmd.AddCommand(buildCmd)
 }

@@ -6,6 +6,15 @@ import (
 	"path/filepath"
 )
 
+func FindCacheRoot() (string, error) {
+	cacheHome := os.Getenv("XDG_CACHE_HOME")
+	if cacheHome == "" {
+		cacheHome = os.Getenv("HOME")
+		cacheHome = filepath.Join(cacheHome, ".cache")
+	}
+	return cacheHome, nil
+}
+
 func FindGoProjectRoot(path string) (string, error) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {

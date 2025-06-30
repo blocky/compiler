@@ -2,6 +2,7 @@ package bkyc
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/blocky/compiler/internal/container"
@@ -26,7 +27,16 @@ func NewGoContainerCfg(
 		fmt.Sprintf("%s:/src", inDir),
 		fmt.Sprintf("%s:/out", outDir),
 	}
-	cmd := fmt.Sprintf(
+	cmd := ""
+	if cacheDir != "" {
+		binds = append(binds, fmt.Sprintf("%s:/home/tinygo/.cache", cacheDir))
+		cmd += `sudo chown -R 1000:1000 /home/tinygo/.cache &&`
+	}
+	if goDir != "" {
+		binds = append(binds, fmt.Sprintf("%s:/home/tinygo/go", goDir))
+		cmd += `sudo chown -R 1000:1000 /home/tinygo/go &&`
+	}
+	cmd += fmt.Sprintf(
 		`tinygo build `+
 			`-target=wasi `+
 			`-o /out/%s `+
@@ -40,15 +50,6 @@ func NewGoContainerCfg(
 		FixedSourceDateEpoch,
 		outFile,
 	)
-	if cacheDir != "" {
-		binds = append(binds, fmt.Sprintf("%s:/home/tinygo/.cache", cacheDir))
-		cmd += `&& sudo chmod -R 0777 /home/tinygo/.cache`
-	}
-	if goDir != "" {
-		binds = append(binds, fmt.Sprintf("%s:/home/tinygo/go", goDir))
-		cmd += `&& sudo chmod -R 0777 /home/tinygo/go`
-	}
-
 	return container.Config{
 		Image: TinyGo,
 		Name:  fmt.Sprintf("%s-%d", BkycPrefix, time.Now().Unix()),
@@ -66,10 +67,9 @@ func NewGoContainerCfg(
 }
 
 func NewGoCompilerCfg(
-	cachePath string,
-	goPath string,
 	inPath string,
 	outPath string,
+	reproducible bool,
 ) (container.Config, error) {
 	zeroRet := container.Config{}
 	inDir, inFile, err := NormalizeInput(inPath)
@@ -79,6 +79,16 @@ func NewGoCompilerCfg(
 	outDir, outFile, err := NormalizeOutput(outPath)
 	if err != nil {
 		return zeroRet, fmt.Errorf("normalizing output paths: %w", err)
+	}
+
+	cachePath, goPath := "", ""
+	if !reproducible {
+		cacheRoot, err := FindCacheRoot()
+		if err != nil {
+			return zeroRet, fmt.Errorf("finding cache root: %w", err)
+		}
+		cachePath = filepath.Join(cacheRoot, "bkyc")
+		goPath = filepath.Join(cacheRoot, "go")
 	}
 	return NewGoContainerCfg(cachePath, goPath, inDir, inFile, outDir, outFile), nil
 }

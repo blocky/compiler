@@ -65,16 +65,16 @@ func TestNewGoContainerCfg(t *testing.T) {
 			Cmd: []string{
 				"sh",
 				"-c",
-				"tinygo build " +
+				"sudo chown -R 1000:1000 /home/tinygo/.cache &&" +
+					"sudo chown -R 1000:1000 /home/tinygo/go &&" +
+					"tinygo build " +
 					"-target=wasi " +
 					"-o /out/outFile " +
 					"-scheduler=none " +
 					"-no-debug " +
 					"-opt=z " +
 					"inFile " +
-					"&& touch -d \"@1234567890\" /out/outFile" +
-					"&& sudo chmod -R 0777 /home/tinygo/.cache" +
-					"&& sudo chmod -R 0777 /home/tinygo/go",
+					"&& touch -d \"@1234567890\" /out/outFile",
 			},
 			WorkingDir: "/src",
 			Tmpfs:      map[string]string{"/tmp": ""},

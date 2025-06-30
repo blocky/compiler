@@ -68,7 +68,7 @@ func Test_CompileGo(t *testing.T) {
 		removeContainersByPrefix(bkyc.BkycPrefix)
 	})
 
-	t.Run("happy path - no cache", func(t *testing.T) {
+	t.Run("happy path - reproducible (no cache)", func(t *testing.T) {
 		// given
 		projRootDir := t.TempDir()
 		copyTestData(
@@ -79,8 +79,6 @@ func Test_CompileGo(t *testing.T) {
 
 		outDir := createTempDir(t, 0777)
 
-		cachePath := ""
-		goPath := ""
 		inPath := filepath.Join(projRootDir, "main.go")
 		outPath := filepath.Join(outDir, "got.wasm")
 
@@ -88,10 +86,9 @@ func Test_CompileGo(t *testing.T) {
 		gotErr := bkyc.CompileGo(
 			context.Background(),
 			container.NewRuntime(slog.Default()),
-			cachePath,
-			goPath,
 			inPath,
 			outPath,
+			true,
 		)
 
 		// then
@@ -103,7 +100,7 @@ func Test_CompileGo(t *testing.T) {
 		)
 	})
 
-	t.Run("happy path - cache", func(t *testing.T) {
+	t.Run("happy path - not reproducible (cache)", func(t *testing.T) {
 		// given
 		projRootDir := t.TempDir()
 		copyTestData(
@@ -114,8 +111,6 @@ func Test_CompileGo(t *testing.T) {
 
 		outDir := createTempDir(t, 0777)
 
-		cachePath := createTempDir(t, 0777)
-		goPath := createTempDir(t, 0777)
 		inPath := filepath.Join(projRootDir, "main.go")
 		outPath := filepath.Join(outDir, "got.wasm")
 
@@ -124,10 +119,9 @@ func Test_CompileGo(t *testing.T) {
 		gotErr := bkyc.CompileGo(
 			context.Background(),
 			container.NewRuntime(slog.Default()),
-			cachePath,
-			goPath,
 			inPath,
 			outPath,
+			false,
 		)
 		emptyCacheTime := time.Since(start)
 
@@ -142,10 +136,9 @@ func Test_CompileGo(t *testing.T) {
 		gotErr = bkyc.CompileGo(
 			context.Background(),
 			container.NewRuntime(slog.Default()),
-			cachePath,
-			goPath,
 			inPath,
 			outPath,
+			false,
 		)
 		fullCacheTime := time.Since(start)
 
@@ -171,8 +164,6 @@ func Test_CompileGo(t *testing.T) {
 
 		outDir := createTempDir(t, 0777)
 
-		cachePath := ""
-		goPath := ""
 		inPath := filepath.Join(projRootDir, "main.go")
 		outPath := filepath.Join(outDir, "got.wasm")
 
@@ -180,10 +171,9 @@ func Test_CompileGo(t *testing.T) {
 		gotErr := bkyc.CompileGo(
 			context.Background(),
 			container.NewRuntime(slog.Default()),
-			cachePath,
-			goPath,
 			inPath,
 			outPath,
+			false,
 		)
 
 		// then
@@ -205,8 +195,6 @@ func Test_CompileGo(t *testing.T) {
 
 		copyTestData(t, "./testdata/no-main-file-go/in", projRootDir)
 
-		cachePath := ""
-		goPath := ""
 		inPath := filepath.Join(projRootDir, "main.go")
 		outPath := filepath.Join(outDir, "got.wasm")
 
@@ -214,10 +202,9 @@ func Test_CompileGo(t *testing.T) {
 		gotErr := bkyc.CompileGo(
 			context.Background(),
 			container.NewRuntime(slog.Default()),
-			cachePath,
-			goPath,
 			inPath,
 			outPath,
+			false,
 		)
 
 		// then
@@ -237,8 +224,6 @@ func Test_CompileGo(t *testing.T) {
 
 		copyTestData(t, "./testdata/no-mod-file-go/in", projRootDir)
 
-		cachePath := ""
-		goPath := ""
 		inPath := filepath.Join(projRootDir, "main.go")
 		outPath := filepath.Join(outDir, "got.wasm")
 
@@ -246,10 +231,9 @@ func Test_CompileGo(t *testing.T) {
 		gotErr := bkyc.CompileGo(
 			context.Background(),
 			container.NewRuntime(slog.Default()),
-			cachePath,
-			goPath,
 			inPath,
 			outPath,
+			false,
 		)
 
 		// then
@@ -264,8 +248,6 @@ func Test_CompileGo(t *testing.T) {
 		projRootDir := t.TempDir()
 		copyTestData(t, "./testdata/hello-world-hash-unvendored-go/in", projRootDir)
 
-		cachePath := ""
-		goPath := ""
 		inPath := filepath.Join(projRootDir, "main.go")
 		outPath := filepath.Join("./no-such-folder-exists", "got.wasm")
 
@@ -273,10 +255,9 @@ func Test_CompileGo(t *testing.T) {
 		gotErr := bkyc.CompileGo(
 			context.Background(),
 			container.NewRuntime(slog.Default()),
-			cachePath,
-			goPath,
 			inPath,
 			outPath,
+			false,
 		)
 
 		// then

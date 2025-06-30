@@ -1,0 +1,23 @@
+# [check] for stale state
+dir-elem-count ${XDG_STATE_HOME}/${CLI_APP_NAME} 1
+
+# [execute] build on a go project
+exec bky-c build in/main.go got/x.wasm &build_process &
+
+# [execute] wait for the initialization to happen
+exec sleep 1
+
+# [check] if active state has been written
+dir-elem-count ${XDG_STATE_HOME}/${CLI_APP_NAME} 2
+
+# [execute] external interruption/termination
+kill -INT $build_process
+
+# [execute] wait for the background processes to finish
+wait
+
+# [check] if all the state has been cleaned
+dir-elem-count ${XDG_STATE_HOME}/${CLI_APP_NAME} 0
+
+# [check] if the interrupt was received
+stderr 'Terminating'

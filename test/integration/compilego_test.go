@@ -12,10 +12,12 @@ import (
 
 	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/blocky/compiler/internal/bkyc"
 	"github.com/blocky/compiler/internal/container"
+	"github.com/blocky/compiler/mocks"
 )
 
 func copyTestData(t *testing.T, srcPath string, dstPath string) {
@@ -69,6 +71,18 @@ func Test_CompileGo(t *testing.T) {
 
 	t.Run("happy path", func(t *testing.T) {
 		// given
+		mem := mocks.NewContainerMemory(t)
+
+		// expecting
+		mem.EXPECT().
+			AddID(mock.Anything).
+			Return(nil).
+			Once()
+		mem.EXPECT().
+			RemoveID(mock.Anything).
+			Return(nil).
+			Once()
+
 		projRootDir := t.TempDir()
 		copyTestData(
 			t,
@@ -84,7 +98,10 @@ func Test_CompileGo(t *testing.T) {
 		// when
 		gotErr := bkyc.CompileGo(
 			context.Background(),
-			container.NewRuntime(slog.Default()),
+			container.NewRuntime(
+				mem,
+				slog.Default(),
+			),
 			inPath,
 			outPath,
 		)
@@ -100,6 +117,18 @@ func Test_CompileGo(t *testing.T) {
 
 	t.Run("incorrect source code", func(t *testing.T) {
 		// given
+		mem := mocks.NewContainerMemory(t)
+
+		// expecting
+		mem.EXPECT().
+			AddID(mock.Anything).
+			Return(nil).
+			Once()
+		mem.EXPECT().
+			RemoveID(mock.Anything).
+			Return(nil).
+			Once()
+
 		projRootDir := t.TempDir()
 		copyTestData(
 			t,
@@ -115,7 +144,10 @@ func Test_CompileGo(t *testing.T) {
 		// when
 		gotErr := bkyc.CompileGo(
 			context.Background(),
-			container.NewRuntime(slog.Default()),
+			container.NewRuntime(
+				mem,
+				slog.Default(),
+			),
 			inPath,
 			outPath,
 		)
@@ -145,7 +177,10 @@ func Test_CompileGo(t *testing.T) {
 		// when
 		gotErr := bkyc.CompileGo(
 			context.Background(),
-			container.NewRuntime(slog.Default()),
+			container.NewRuntime(
+				nil,
+				slog.Default(),
+			),
 			inPath,
 			outPath,
 		)
@@ -173,7 +208,7 @@ func Test_CompileGo(t *testing.T) {
 		// when
 		gotErr := bkyc.CompileGo(
 			context.Background(),
-			container.NewRuntime(slog.Default()),
+			container.NewRuntime(nil, slog.Default()),
 			inPath,
 			outPath,
 		)
@@ -196,7 +231,7 @@ func Test_CompileGo(t *testing.T) {
 		// when
 		gotErr := bkyc.CompileGo(
 			context.Background(),
-			container.NewRuntime(slog.Default()),
+			container.NewRuntime(nil, slog.Default()),
 			inPath,
 			outPath,
 		)

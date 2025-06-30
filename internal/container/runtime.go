@@ -10,6 +10,7 @@ const OK = 0
 type Client interface {
 	Compatible(context.Context) (bool, error)
 	ImageExists(context.Context, string) (bool, error)
+	ContainerExists(context.Context, string) (bool, error)
 	PullImage(context.Context, string) error
 	Create(context.Context, Config) (string, error)
 	Start(context.Context, string) error
@@ -19,23 +20,31 @@ type Client interface {
 	Remove(context.Context, string) error
 }
 
-func NewRuntimeFromRaw(client Client, log Logger) *Runtime {
+type Memory interface {
+	AddID(string) error
+	RemoveID(string) error
+}
+
+func NewRuntimeFromRaw(client Client, mem Memory, log Logger) *Runtime {
 	return &Runtime{
 		client: client,
 		log:    log,
+		mem:    mem,
 	}
 }
 
-func NewRuntime(log Logger) *Runtime {
+func NewRuntime(mem Memory, log Logger) *Runtime {
 	return &Runtime{
 		client: NewAPIClientWithLogger(log),
 		log:    log,
+		mem:    mem,
 	}
 }
 
 type Runtime struct {
 	client Client
 	log    Logger
+	mem    Memory
 }
 
 func (r *Runtime) Compatible(ctx context.Context) (bool, error) {
@@ -67,6 +76,9 @@ func (r *Runtime) Launch(
 	cID, err := r.client.Create(ctx, cfg)
 	if err != nil {
 		return "", fmt.Errorf("creating container: %w", err)
+	}
+	if err := r.mem.AddID(cID); err != nil {
+		return "", fmt.Errorf("saving container ID to memory '%s': %w", cID, err)
 	}
 	if err := r.client.Start(ctx, cID); err != nil {
 		return "", fmt.Errorf("starting container: %w", err)
@@ -107,11 +119,22 @@ func (r *Runtime) CleanUp(
 	ctx context.Context,
 	cID string,
 ) error {
+	exists, err := r.client.ContainerExists(ctx, cID)
+	switch {
+	case err != nil:
+		return fmt.Errorf("checking container status '%s': %w", cID, err)
+	case !exists:
+		r.log.Debug("Container doesn't exist", "id", cID)
+		return nil
+	}
 	if err := r.client.Stop(ctx, cID); err != nil {
 		r.log.Debug("stopping container", "err", err.Error())
 	}
 	if err := r.client.Remove(ctx, cID); err != nil {
 		return fmt.Errorf("removing container: %w", err)
+	}
+	if err := r.mem.RemoveID(cID); err != nil {
+		return fmt.Errorf("removing container ID from memory '%s': %w", cID, err)
 	}
 	return nil
 }
@@ -129,8 +152,7 @@ func (r *Runtime) Run(
 		return zeroRet, fmt.Errorf("runtime not compatible")
 	}
 
-	err = r.GetImage(ctx, cfg.Image)
-	if err != nil {
+	if err := r.GetImage(ctx, cfg.Image); err != nil {
 		return zeroRet, fmt.Errorf("getting image '%s': %w", cfg.Image, err)
 	}
 
@@ -139,9 +161,8 @@ func (r *Runtime) Run(
 		return zeroRet, fmt.Errorf("launching container: %w", err)
 	}
 	defer func() {
-		err := r.CleanUp(ctx, cID)
-		if err != nil {
-			r.log.Warn("cleaning up container", "err", err)
+		if err := r.CleanUp(ctx, cID); err != nil {
+			r.log.Error("cleaning up container", "err", err)
 		}
 	}()
 

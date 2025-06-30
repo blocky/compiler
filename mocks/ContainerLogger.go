@@ -61,28 +61,28 @@ func (_c *ContainerLogger_Debug_Call) RunAndReturn(run func(string, ...interface
 	return _c
 }
 
-// Warn provides a mock function with given fields: _a0, _a1
-func (_m *ContainerLogger) Warn(_a0 string, _a1 ...interface{}) {
+// Error provides a mock function with given fields: _a0, _a1
+func (_m *ContainerLogger) Error(_a0 string, _a1 ...interface{}) {
 	var _ca []interface{}
 	_ca = append(_ca, _a0)
 	_ca = append(_ca, _a1...)
 	_m.Called(_ca...)
 }
 
-// ContainerLogger_Warn_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Warn'
-type ContainerLogger_Warn_Call struct {
+// ContainerLogger_Error_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Error'
+type ContainerLogger_Error_Call struct {
 	*mock.Call
 }
 
-// Warn is a helper method to define mock.On call
+// Error is a helper method to define mock.On call
 //   - _a0 string
 //   - _a1 ...interface{}
-func (_e *ContainerLogger_Expecter) Warn(_a0 interface{}, _a1 ...interface{}) *ContainerLogger_Warn_Call {
-	return &ContainerLogger_Warn_Call{Call: _e.mock.On("Warn",
+func (_e *ContainerLogger_Expecter) Error(_a0 interface{}, _a1 ...interface{}) *ContainerLogger_Error_Call {
+	return &ContainerLogger_Error_Call{Call: _e.mock.On("Error",
 		append([]interface{}{_a0}, _a1...)...)}
 }
 
-func (_c *ContainerLogger_Warn_Call) Run(run func(_a0 string, _a1 ...interface{})) *ContainerLogger_Warn_Call {
+func (_c *ContainerLogger_Error_Call) Run(run func(_a0 string, _a1 ...interface{})) *ContainerLogger_Error_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]interface{}, len(args)-1)
 		for i, a := range args[1:] {
@@ -95,12 +95,12 @@ func (_c *ContainerLogger_Warn_Call) Run(run func(_a0 string, _a1 ...interface{}
 	return _c
 }
 
-func (_c *ContainerLogger_Warn_Call) Return() *ContainerLogger_Warn_Call {
+func (_c *ContainerLogger_Error_Call) Return() *ContainerLogger_Error_Call {
 	_c.Call.Return()
 	return _c
 }
 
-func (_c *ContainerLogger_Warn_Call) RunAndReturn(run func(string, ...interface{})) *ContainerLogger_Warn_Call {
+func (_c *ContainerLogger_Error_Call) RunAndReturn(run func(string, ...interface{})) *ContainerLogger_Error_Call {
 	_c.Call.Return(run)
 	return _c
 }

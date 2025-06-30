@@ -6,8 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"testing"
 
+	"github.com/otiai10/copy"
 	"github.com/rogpeppe/go-internal/testscript"
 )
 
@@ -68,37 +70,26 @@ func (e *ProjectTest) ChownIf(ok Condition, relPath string, uid, gid int) *Proje
 func (e *ProjectTest) CopyDir(relPath string) *ProjectTest {
 	setupFunc := func(env *testscript.Env) error {
 		srcDir := filepath.Join(e.projectDir, relPath)
-		return filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return fmt.Errorf("failed to walk dir %s: %w", srcDir, err)
-			}
-			if info.IsDir() {
-				return nil
-			}
-			relPath, err := filepath.Rel(filepath.Dir(srcDir), path)
-			if err != nil {
-				return fmt.Errorf("failed to get relative path of %s: %w", path, err)
-			}
+		dstDir := filepath.Join(env.WorkDir, relPath)
+		return copy.Copy(srcDir, dstDir)
+	}
+	e.setupFuncs = append(e.setupFuncs, setupFunc)
+	return e
+}
 
-			src := filepath.Join(e.projectDir, relPath)
-			dst := filepath.Join(env.WorkDir, relPath)
-			dstDir := filepath.Dir(dst)
-			if err := os.MkdirAll(dstDir, 0755); err != nil {
-				msg := "failed to create destination directory %s: %w"
-				return fmt.Errorf(msg, dstDir, err)
-			}
-
-			srcContent, err := os.ReadFile(src)
-			if err != nil {
-				return fmt.Errorf("failed to read source file %s: %w", src, err)
-			}
-
-			if err := os.WriteFile(dst, srcContent, 0644); err != nil {
-				msg := "failed to write destination file %s: %w"
-				return fmt.Errorf(msg, dst, err)
-			}
-			return nil
-		})
+func (e *ProjectTest) CopyDirToAppStateDir(srcRelPath string) *ProjectTest {
+	setupFunc := func(env *testscript.Env) error {
+		srcDir := filepath.Join(e.projectDir, srcRelPath)
+		xdgStateHomeDir := env.Getenv("XDG_STATE_HOME")
+		if xdgStateHomeDir == "" {
+			return fmt.Errorf("XDG_STATE_HOME environment variable not set")
+		}
+		cliAppName := env.Getenv("CLI_APP_NAME")
+		if cliAppName == "" {
+			return fmt.Errorf("CLI_APP_NAME environment variable not set")
+		}
+		dstDir := filepath.Join(xdgStateHomeDir, cliAppName, filepath.Base(srcRelPath))
+		return copy.Copy(srcDir, dstDir)
 	}
 	e.setupFuncs = append(e.setupFuncs, setupFunc)
 	return e
@@ -152,7 +143,24 @@ func (e *ProjectTest) ImportEnvVars(envKeys []string) *ProjectTest {
 		}
 		return nil
 	}
+	e.setupFuncs = append(e.setupFuncs, setupFunc)
+	return e
+}
 
+func (e *ProjectTest) SetEnvVar(key, value string) *ProjectTest {
+	setupFunc := func(env *testscript.Env) error {
+		env.Setenv(key, value)
+		return nil
+	}
+	e.setupFuncs = append(e.setupFuncs, setupFunc)
+	return e
+}
+
+func (e *ProjectTest) SetXdgStateHomeDir(path string) *ProjectTest {
+	setupFunc := func(env *testscript.Env) error {
+		env.Setenv("XDG_STATE_HOME", filepath.Join(env.WorkDir, path))
+		return nil
+	}
 	e.setupFuncs = append(e.setupFuncs, setupFunc)
 	return e
 }
@@ -164,15 +172,47 @@ func assertBinEqual(ts *testscript.TestScript, neg bool, args []string) {
 	}
 	want, err := os.ReadFile(ts.MkAbs(args[0]))
 	if err != nil {
-		ts.Fatalf("failed to read 'want' file %s: %v", args[0], err)
+		ts.Fatalf("reading 'want' file '%s': %v", args[0], err)
 	}
 	got, err := os.ReadFile(ts.MkAbs(args[1]))
 	if err != nil {
-		ts.Fatalf("failed to read 'got' file %s: %v", args[1], err)
+		ts.Fatalf("reading 'got' file '%s': %v", args[1], err)
 	}
 	if bytes.Equal(want, got) == neg {
 		msg := map[bool]string{true: "equal", false: "not equal"}[neg]
 		ts.Fatalf("file '%s' and file '%s' are '%s'", want, got, msg)
+	}
+}
+
+func assertDirElementCount(ts *testscript.TestScript, neg bool, args []string) {
+	if neg {
+		ts.Fatalf("negation not supported")
+	}
+	expArgs := 2
+	if len(args) != expArgs {
+		ts.Fatalf("expecting %d args, but got %d", expArgs, len(args))
+	}
+	stat, err := os.Stat(ts.MkAbs(args[0]))
+	if err != nil {
+		ts.Fatalf("getting stat for '%s': %v", args[0], err)
+	}
+	if !stat.IsDir() {
+		ts.Fatalf("not a directory: '%s'", args[0])
+	}
+	entries, err := os.ReadDir(ts.MkAbs(args[0]))
+	if err != nil {
+		ts.Fatalf("reading dir '%s': %v", args[0], err)
+	}
+	expCount, err := strconv.Atoi(args[1])
+	if err != nil {
+		ts.Fatalf("expecting numeric value '%s': %v", args[0], err)
+	}
+	if len(entries) != expCount {
+		ts.Fatalf(
+			"expecting dir entry count of '%d' to be equal to %d",
+			len(entries),
+			expCount,
+		)
 	}
 }
 
@@ -186,7 +226,8 @@ func (e *ProjectTest) RunScript(scriptFile string) {
 		return nil
 	}
 	e.params.Cmds = map[string]func(ts *testscript.TestScript, neg bool, args []string){
-		"bin-eq": assertBinEqual,
+		"bin-eq":         assertBinEqual,
+		"dir-elem-count": assertDirElementCount,
 	}
 	e.params.Files = []string{scriptFile}
 	testscript.Run(e.t, e.params)

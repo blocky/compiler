@@ -17,7 +17,10 @@ func TestGetDaemonSocketPath(t *testing.T) {
 		unixSock := "unix://" + wantSock
 
 		cleanValue := os.Getenv("DOCKER_HOST")
-		defer os.Setenv("DOCKER_HOST", cleanValue)
+		defer func() {
+			err := os.Setenv("DOCKER_HOST", cleanValue)
+			require.NoError(t, err)
+		}()
 		err := os.Setenv("DOCKER_HOST", unixSock)
 		require.NoError(t, err)
 
@@ -29,6 +32,15 @@ func TestGetDaemonSocketPath(t *testing.T) {
 	})
 
 	t.Run("happy path - socket from fallback value", func(t *testing.T) {
+		// given
+		cleanValue := os.Getenv("DOCKER_HOST")
+		defer func() {
+			err := os.Setenv("DOCKER_HOST", cleanValue)
+			require.NoError(t, err)
+		}()
+		err := os.Setenv("DOCKER_HOST", "")
+		require.NoError(t, err)
+
 		// when
 		gotSock := container.GetDaemonSocketPath()
 

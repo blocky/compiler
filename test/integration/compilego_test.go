@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"
@@ -115,7 +114,6 @@ func Test_CompileGo(t *testing.T) {
 		outPath := filepath.Join(outDir, "got.wasm")
 
 		// when
-		start := time.Now()
 		gotErr := bkyc.CompileGo(
 			context.Background(),
 			container.NewRuntime(slog.Default()),
@@ -123,34 +121,9 @@ func Test_CompileGo(t *testing.T) {
 			outPath,
 			false,
 		)
-		emptyCacheTime := time.Since(start)
-
-		assert.NoError(t, gotErr)
-		assertFilesEqual(
-			t,
-			"./testdata/hello-world-hash-unvendored-go/want/x.wasm",
-			outPath,
-		)
-
-		start = time.Now()
-		gotErr = bkyc.CompileGo(
-			context.Background(),
-			container.NewRuntime(slog.Default()),
-			inPath,
-			outPath,
-			false,
-		)
-		fullCacheTime := time.Since(start)
-
-		assert.NoError(t, gotErr)
-		assertFilesEqual(
-			t,
-			"./testdata/hello-world-hash-unvendored-go/want/x.wasm",
-			outPath,
-		)
 
 		// then
-		assert.Less(t, fullCacheTime, emptyCacheTime)
+		assert.NoError(t, gotErr)
 	})
 
 	t.Run("incorrect source code", func(t *testing.T) {

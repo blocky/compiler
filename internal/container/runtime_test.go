@@ -335,15 +335,19 @@ func TestRuntime_CleanUp(t *testing.T) {
 		// given
 		wantID := "testid"
 		ctx := context.Background()
+		mockLogger := mocks.NewContainerLogger(t)
 		mockClient := mocks.NewContainerClient(t)
-		sut := container.NewRuntimeFromRaw(mockClient, slog.Default())
+		sut := container.NewRuntimeFromRaw(mockClient, mockLogger)
 
 		// expecting
+		mockClient.EXPECT().
+			ContainerExists(ctx, wantID).
+			Return(true, nil).
+			Once()
 		mockClient.EXPECT().
 			Stop(ctx, wantID).
 			Return(nil).
 			Once()
-
 		mockClient.EXPECT().
 			Remove(ctx, wantID).
 			Return(nil).
@@ -356,6 +360,54 @@ func TestRuntime_CleanUp(t *testing.T) {
 		require.NoError(t, gotErr)
 	})
 
+	t.Run("container does not exist", func(t *testing.T) {
+		// given
+		wantID := "testid"
+		ctx := context.Background()
+		mockClient := mocks.NewContainerClient(t)
+		mockLogger := mocks.NewContainerLogger(t)
+		sut := container.NewRuntimeFromRaw(mockClient, mockLogger)
+
+		// expecting
+		mockClient.EXPECT().
+			ContainerExists(ctx, wantID).
+			Return(false, nil).
+			Once()
+
+		mockLogger.EXPECT().
+			Debug("Container doesn't exist", "id", wantID).
+			Once()
+
+		// when
+		gotErr := sut.CleanUp(ctx, wantID)
+
+		// then
+		require.NoError(t, gotErr)
+	})
+
+	t.Run("error checking if container exists", func(t *testing.T) {
+		// given
+		wantID := "testid"
+		wantErr := fmt.Errorf("test error message")
+		ctx := context.Background()
+		mockClient := mocks.NewContainerClient(t)
+		mockLogger := mocks.NewContainerLogger(t)
+		sut := container.NewRuntimeFromRaw(mockClient, mockLogger)
+
+		// expecting
+		mockClient.EXPECT().
+			ContainerExists(ctx, wantID).
+			Return(false, wantErr).
+			Once()
+
+		// when
+		gotErr := sut.CleanUp(ctx, wantID)
+
+		// then
+		require.Error(t, gotErr)
+		require.ErrorContains(t, gotErr, "checking container status")
+	})
+
 	t.Run("error stopping container", func(t *testing.T) {
 		// given
 		wantID := "testid"
@@ -366,6 +418,11 @@ func TestRuntime_CleanUp(t *testing.T) {
 		sut := container.NewRuntimeFromRaw(mockClient, mockLogger)
 
 		// expecting
+		mockClient.EXPECT().
+			ContainerExists(ctx, wantID).
+			Return(true, nil).
+			Once()
+
 		mockClient.EXPECT().
 			Stop(ctx, wantID).
 			Return(wantErr).
@@ -396,6 +453,11 @@ func TestRuntime_CleanUp(t *testing.T) {
 		sut := container.NewRuntimeFromRaw(mockClient, slog.Default())
 
 		// expecting
+		mockClient.EXPECT().
+			ContainerExists(ctx, wantID).
+			Return(true, nil).
+			Once()
+
 		mockClient.EXPECT().
 			Stop(ctx, wantID).
 			Return(nil).
@@ -456,6 +518,10 @@ func TestRuntime_Run(t *testing.T) {
 		mockClient.EXPECT().
 			Logs(ctx, wantID).
 			Return(wantStdOut, wantStdErr, nil).
+			Once()
+		mockClient.EXPECT().
+			ContainerExists(ctx, wantID).
+			Return(true, nil).
 			Once()
 		mockClient.EXPECT().
 			Stop(ctx, wantID).
@@ -641,6 +707,10 @@ func TestRuntime_Run(t *testing.T) {
 			Return(1, "", errors.New(wantErrMsg)).
 			Once()
 		mockClient.EXPECT().
+			ContainerExists(ctx, wantID).
+			Return(true, nil).
+			Once()
+		mockClient.EXPECT().
 			Stop(ctx, wantID).
 			Return(nil).
 			Once()
@@ -698,6 +768,10 @@ func TestRuntime_Run(t *testing.T) {
 		mockClient.EXPECT().
 			Logs(ctx, wantID).
 			Return(wantStdOut, wantStdErr, nil).
+			Once()
+		mockClient.EXPECT().
+			ContainerExists(ctx, wantID).
+			Return(true, nil).
 			Once()
 		mockClient.EXPECT().
 			Stop(ctx, wantID).

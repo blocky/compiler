@@ -328,6 +328,113 @@ func TestClient_ImageExistsByDigest(t *testing.T) {
 	})
 }
 
+func TestClient_ContainerExists(t *testing.T) {
+	for name, tc := range map[string]struct {
+		srvStatus int
+		wantExist bool
+	}{
+		"happy path - image exists": {
+			srvStatus: http.StatusOK,
+			wantExist: true,
+		},
+		"happy path - image does not exist": {
+			srvStatus: http.StatusNotFound,
+			wantExist: false,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			//given
+			wantID := "test-container-id"
+			wantPath := fmt.Sprintf("/v%s/containers/%s/json", container.APIVersion, wantID)
+			wantMethod := "GET"
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, wantMethod, r.Method)
+				assert.Equal(t, wantPath, r.URL.Path)
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.srvStatus)
+			}))
+			defer ts.Close()
+
+			sut := &container.APIClient{
+				Doer:    ts.Client(),
+				BaseURL: ts.URL,
+				Log:     slog.Default(),
+			}
+
+			// when
+			gotExists, err := sut.ContainerExists(context.Background(), wantID)
+
+			// then
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantExist, gotExists)
+		})
+	}
+
+	for name, tc := range map[string]struct {
+		srvResp   string
+		wantError string
+	}{
+		"status not ok": {
+			srvResp:   `{"message":"srv err msg"}`,
+			wantError: "unknown response: srv err msg",
+		},
+		"incorrect srv error msg": {
+			srvResp:   "incorrect srv error msg",
+			wantError: "decoding api response error",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			//given
+			wantMethod := "GET"
+			wantID := "test-container-id"
+			wantPath := fmt.Sprintf("/v%s/containers/%s/json", container.APIVersion, wantID)
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, wantMethod, r.Method)
+				assert.Equal(t, wantPath, r.URL.Path)
+				http.Error(w, tc.srvResp, http.StatusTeapot)
+			}))
+			defer ts.Close()
+
+			sut := &container.APIClient{
+				Doer:    ts.Client(),
+				BaseURL: ts.URL,
+				Log:     slog.Default(),
+			}
+
+			// when
+			_, gotErr := sut.ContainerExists(context.Background(), wantID)
+
+			// then
+			assert.ErrorContains(t, gotErr, tc.wantError)
+		})
+	}
+
+	t.Run("error making request", func(t *testing.T) {
+		// given
+		wantError := "error making request"
+		client := ClientThatErrors{
+			errorMsg: wantError,
+		}
+
+		sut := &container.APIClient{
+			Doer:    client,
+			BaseURL: "unused-url",
+			Log:     slog.Default(),
+		}
+
+		// when
+		_, gotErr := sut.ContainerExists(context.Background(), "id")
+
+		// then
+		require.Error(t, gotErr)
+		assert.ErrorContains(t, gotErr, wantError)
+		assert.ErrorContains(t, gotErr, "making container info request")
+	})
+}
+
 func TestClient_PullImage(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		// given

@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"
@@ -123,12 +124,10 @@ func Test_CompileGo(t *testing.T) {
 		// expecting
 		mem.EXPECT().
 			AddID(mock.Anything).
-			Return(nil).
-			Once()
+			Return(nil)
 		mem.EXPECT().
 			RemoveID(mock.Anything).
-			Return(nil).
-			Once()
+			Return(nil)
 
 		projRootDir := t.TempDir()
 		copyTestData(
@@ -142,17 +141,31 @@ func Test_CompileGo(t *testing.T) {
 		inPath := filepath.Join(projRootDir, "main.go")
 		outPath := filepath.Join(outDir, "got.wasm")
 
-		// when
+		start := time.Now()
 		gotErr := bkyc.CompileGo(
+			context.Background(),
+			container.NewRuntime(mem, slog.Default()),
+			inPath,
+			outPath,
+			true,
+		)
+		reproducibleTime := time.Since(start)
+		require.NoError(t, gotErr)
+
+		// when
+		start = time.Now()
+		gotErr = bkyc.CompileGo(
 			context.Background(),
 			container.NewRuntime(mem, slog.Default()),
 			inPath,
 			outPath,
 			false,
 		)
+		fastTime := time.Since(start)
 
 		// then
 		assert.NoError(t, gotErr)
+		assert.Less(t, fastTime, reproducibleTime)
 	})
 
 	t.Run("incorrect source code", func(t *testing.T) {

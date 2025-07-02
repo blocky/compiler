@@ -17,7 +17,7 @@ const (
 	FixedSourceDateEpoch = "1234567890"
 )
 
-func NewGoContainerCfg(
+func NewFastGoContainerCfg(
 	cacheDir string,
 	goDir string,
 	inDir string,
@@ -25,33 +25,6 @@ func NewGoContainerCfg(
 	outDir string,
 	outFile string,
 ) container.Config {
-	binds := []string{
-		fmt.Sprintf("%s:/src", inDir),
-		fmt.Sprintf("%s:/out", outDir),
-	}
-	cmd := ""
-	if cacheDir != "" {
-		binds = append(binds, fmt.Sprintf("%s:/home/tinygo/.cache", cacheDir))
-		cmd += `sudo chown -R 1000:1000 /home/tinygo/.cache &&`
-	}
-	if goDir != "" {
-		binds = append(binds, fmt.Sprintf("%s:/home/tinygo/go", goDir))
-		cmd += `sudo chown -R 1000:1000 /home/tinygo/go &&`
-	}
-	cmd += fmt.Sprintf(
-		`tinygo build `+
-			`-target=wasi `+
-			`-o /out/%s `+
-			`-scheduler=none `+
-			`-no-debug `+
-			`-opt=z `+
-			`%s `+
-			`&& touch -d "@%s" /out/%s`,
-		outFile,
-		inFile,
-		FixedSourceDateEpoch,
-		outFile,
-	)
 	return container.Config{
 		Image: TinyGo,
 		Name: fmt.Sprintf(
@@ -66,9 +39,79 @@ func NewGoContainerCfg(
 			fmt.Sprintf("SOURCE_DATE_EPOCH=%s", FixedSourceDateEpoch),
 		},
 		WorkingDir: "/src",
-		Cmd:        []string{"sh", "-c", cmd},
-		Tmpfs:      map[string]string{"/tmp": ""},
-		Binds:      binds,
+		Cmd: []string{
+			"sh", "-c",
+			fmt.Sprintf(
+				`sudo chown -R 1000:1000 /home/tinygo/.cache &&`+
+					`sudo chown -R 1000:1000 /home/tinygo/go &&`+
+					`tinygo build `+
+					`-target=wasi `+
+					`-o /out/%s `+
+					`-scheduler=none `+
+					`-no-debug `+
+					`-opt=z `+
+					`%s `+
+					`&& touch -d "@%s" /out/%s`,
+				outFile,
+				inFile,
+				FixedSourceDateEpoch,
+				outFile,
+			),
+		},
+		Tmpfs: map[string]string{"/tmp": ""},
+		Binds: []string{
+			fmt.Sprintf("%s:/src", inDir),
+			fmt.Sprintf("%s:/out", outDir),
+			fmt.Sprintf("%s:/home/tinygo/.cache", cacheDir),
+			fmt.Sprintf("%s:/home/tinygo/go", goDir),
+		},
+		AutoRemove: false,
+	}
+}
+
+func NewReproducibleGoContainerCfg(
+	inDir string,
+	inFile string,
+	outDir string,
+	outFile string,
+) container.Config {
+	return container.Config{
+		Image: TinyGo,
+		Name: fmt.Sprintf(
+			"%s-%d-%s",
+			BkycPrefix,
+			time.Now().Unix(),
+			uuid.New().String(),
+		),
+		User: "tinygo",
+		Env: []string{
+			"GOCACHE=/tmp/gocache",
+			fmt.Sprintf("SOURCE_DATE_EPOCH=%s", FixedSourceDateEpoch),
+		},
+		WorkingDir: "/src",
+		Cmd: []string{
+			"sh", "-c",
+			fmt.Sprintf(
+				`tinygo build `+
+					`-target=wasi `+
+					`-o /out/%s `+
+					`-scheduler=none `+
+					`-no-debug `+
+					`-opt=z `+
+					`%s `+
+					`&& `+
+					`touch -d "@%s" /out/%s`,
+				outFile,
+				inFile,
+				FixedSourceDateEpoch,
+				outFile,
+			),
+		},
+		Tmpfs: map[string]string{"/tmp": ""},
+		Binds: []string{
+			fmt.Sprintf("%s:/src", inDir),
+			fmt.Sprintf("%s:/out", outDir),
+		},
 		AutoRemove: false,
 	}
 }
@@ -88,14 +131,16 @@ func NewGoCompilerCfg(
 		return zeroRet, fmt.Errorf("normalizing output paths: %w", err)
 	}
 
-	cachePath, goPath := "", ""
-	if !reproducible {
-		cacheRoot, err := FindCacheRoot()
-		if err != nil {
-			return zeroRet, fmt.Errorf("finding cache root: %w", err)
-		}
-		cachePath = filepath.Join(cacheRoot, "bky-c")
-		goPath = filepath.Join(cacheRoot, "go")
+	if reproducible {
+		return NewReproducibleGoContainerCfg(inDir, inFile, outDir, outFile), nil
 	}
-	return NewGoContainerCfg(cachePath, goPath, inDir, inFile, outDir, outFile), nil
+
+	cachePath, goPath := "", ""
+	cacheRoot, err := FindCacheRoot()
+	if err != nil {
+		return zeroRet, fmt.Errorf("finding cache root: %w", err)
+	}
+	cachePath = filepath.Join(cacheRoot, "bky-c")
+	goPath = filepath.Join(cacheRoot, "go")
+	return NewFastGoContainerCfg(cachePath, goPath, inDir, inFile, outDir, outFile), nil
 }

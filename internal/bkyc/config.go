@@ -13,6 +13,8 @@ import (
 const (
 	// TinyGo hash points to tinygo/0.34.0
 	TinyGo               = "tinygo/tinygo@sha256:79c73c4246a1079e648d6e8425bae4654f26d2baed24c96537a8893b41c04d26"
+	TinyGoGID            = 1000
+	TinyGoUID            = 1000
 	BkycPrefix           = "bkyc-tinygo"
 	FixedSourceDateEpoch = "1234567890"
 )
@@ -42,8 +44,8 @@ func NewFastGoContainerCfg(
 		Cmd: []string{
 			"sh", "-c",
 			fmt.Sprintf(
-				`sudo chown -R 1000:1000 /home/tinygo/.cache &&`+
-					`sudo chown -R 1000:1000 /home/tinygo/go &&`+
+				`sudo chown -R %v:%v /home/tinygo/.cache &&`+
+					`sudo chown -R %v:%v /home/tinygo/go &&`+
 					`tinygo build `+
 					`-target=wasi `+
 					`-o /out/%s `+
@@ -52,6 +54,10 @@ func NewFastGoContainerCfg(
 					`-opt=z `+
 					`%s `+
 					`&& touch -d "@%s" /out/%s`,
+				TinyGoUID,
+				TinyGoGID,
+				TinyGoUID,
+				TinyGoGID,
 				outFile,
 				inFile,
 				FixedSourceDateEpoch,

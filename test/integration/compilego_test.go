@@ -118,6 +118,18 @@ func Test_CompileGo(t *testing.T) {
 
 	t.Run("happy path - not reproducible (cache)", func(t *testing.T) {
 		// given
+		mem := mocks.NewContainerMemory(t)
+
+		// expecting
+		mem.EXPECT().
+			AddID(mock.Anything).
+			Return(nil).
+			Once()
+		mem.EXPECT().
+			RemoveID(mock.Anything).
+			Return(nil).
+			Once()
+
 		projRootDir := t.TempDir()
 		copyTestData(
 			t,
@@ -133,7 +145,7 @@ func Test_CompileGo(t *testing.T) {
 		// when
 		gotErr := bkyc.CompileGo(
 			context.Background(),
-			container.NewRuntime(slog.Default()),
+			container.NewRuntime(mem, slog.Default()),
 			inPath,
 			outPath,
 			false,

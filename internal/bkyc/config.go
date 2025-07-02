@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/blocky/compiler/internal/container"
 )
 
@@ -52,8 +54,13 @@ func NewGoContainerCfg(
 	)
 	return container.Config{
 		Image: TinyGo,
-		Name:  fmt.Sprintf("%s-%d", BkycPrefix, time.Now().Unix()),
-		User:  "tinygo",
+		Name: fmt.Sprintf(
+			"%s-%d-%s",
+			BkycPrefix,
+			time.Now().Unix(),
+			uuid.New().String(),
+		),
+		User: "tinygo",
 		Env: []string{
 			"GOCACHE=/tmp/gocache",
 			fmt.Sprintf("SOURCE_DATE_EPOCH=%s", FixedSourceDateEpoch),

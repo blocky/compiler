@@ -1,0 +1,5 @@
+# [execute] build on a go project
+exec bky-c build --reproducible in/main.go got/x.wasm
+
+# [check] binary is reproducibly built
+bin-eq want/x.wasm got/x.wasm

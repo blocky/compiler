@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"slices"
 	"strconv"
 
@@ -33,8 +32,8 @@ type Config struct {
 }
 
 type Logger interface {
+	Error(string, ...any)
 	Debug(string, ...any)
-	Warn(string, ...any)
 }
 
 type HTTPDoer interface {
@@ -50,7 +49,7 @@ type APIClient struct {
 func NewAPIClient() *APIClient {
 	return &APIClient{
 		Doer:    newUnixSockHTTPClient(),
-		BaseURL: "http://placeholder.for.unix.sock",
+		BaseURL: "http://unix.sock",
 		Log:     slog.Default(),
 	}
 }
@@ -58,28 +57,16 @@ func NewAPIClient() *APIClient {
 func NewAPIClientWithLogger(log Logger) *APIClient {
 	return &APIClient{
 		Doer:    newUnixSockHTTPClient(),
-		BaseURL: "http://placeholder.for.unix.sock",
+		BaseURL: "http://unix.sock",
 		Log:     log,
 	}
-}
-
-func getDaemonSocketPath() string {
-	defaultSocket := "/var/run/docker.sock"
-	if host := os.Getenv("DOCKER_HOST"); host != empty {
-		dh, err := url.Parse(host)
-		if err != nil || dh.Scheme != "unix" {
-			return defaultSocket
-		}
-		return dh.Path
-	}
-	return defaultSocket
 }
 
 func newUnixSockHTTPClient() *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", getDaemonSocketPath())
+				return net.Dial("unix", GetDaemonSocketPath())
 			},
 		},
 	}
@@ -211,6 +198,33 @@ func (c *APIClient) ImageExists(
 	default:
 		return false, fmt.Errorf(
 			"unknown image info response code: %d",
+			resp.StatusCode,
+		)
+	}
+}
+
+func (c *APIClient) ContainerExists(ctx context.Context, cID string) (bool, error) {
+	resp, err := c.do(
+		ctx,
+		"GET",
+		fmt.Sprintf("/v%s/containers/%s/json", APIVersion, cID),
+		nil,
+		http.StatusOK,
+		http.StatusNotFound,
+	)
+	if err != nil {
+		return false, fmt.Errorf("making container info request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		return true, nil
+	case http.StatusNotFound:
+		return false, nil
+	default:
+		return false, fmt.Errorf(
+			"unknown container info response code: %d",
 			resp.StatusCode,
 		)
 	}

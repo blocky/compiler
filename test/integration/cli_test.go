@@ -7,6 +7,7 @@ import (
 
 	"github.com/blocky/compiler/cmd/bky-c/cmd"
 	"github.com/blocky/compiler/internal/bkyc"
+	"github.com/blocky/compiler/test"
 )
 
 const (
@@ -27,14 +28,14 @@ func runsAsRoot() bool {
 
 func TestBuild(t *testing.T) {
 	t.Cleanup(func() {
-		removeContainersByPrefix(bkyc.BkycPrefix)
+		test.RemoveContainersByPrefix(bkyc.BkycPrefix)
 	})
 
-	prepareEnv := func(projectDir string) *ProjectTest {
+	prepareEnv := func(projectDir string) *test.ProjectTest {
 		envVars := []string{
 			"DOCKER_HOST",
 		}
-		return NewProjectTest(t, projectDir).
+		return test.NewProjectTest(t, projectDir).
 			BuildIfMissing(CLIPath(), cmd.CliName).
 			MakeDir("xdgHome").
 			SetXdgStateHomeDir("xdgHome").

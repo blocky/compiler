@@ -1,0 +1,29 @@
+# [execute] build on a go project
+exec bky-c build compile-in got/x.wasm
+
+# [execute] attest fn call
+stdin attest-in/fn-call.json
+exec ${BKY_AS_RELEASE_1_BIN} attest-fn-call --config ${BKY_AS_RELEASE_1_CONFIG}
+cp stdout result.json
+
+# [check] assert stdout contains correct output
+exec jq -c -r '.transitive_attested_function_call.claims.output | @base64d | fromjson' result.json
+stdout '^\{"Success":true,"Error":"","Value":\d+\}$'
+
+# [execute] attest fn call
+stdin attest-in/fn-call.json
+exec ${BKY_AS_RELEASE_2_BIN} attest-fn-call --config ${BKY_AS_RELEASE_2_CONFIG}
+cp stdout result.json
+
+# [check] assert stdout contains correct output
+exec jq -c -r '.transitive_attested_function_call.claims.output | @base64d | fromjson' result.json
+stdout '^\{"Success":true,"Error":"","Value":\d+\}$'
+
+# [execute] attest fn call
+stdin attest-in/fn-call.json
+exec ${BKY_AS_RELEASE_3_BIN} attest-fn-call --config ${BKY_AS_RELEASE_3_CONFIG}
+cp stdout result.json
+
+# [check] assert stdout contains correct output
+exec jq -c -r '.transitive_attested_function_call.claims.output | @base64d | fromjson' result.json
+stdout '^\{"Success":true,"Error":"","Value":\d+\}$'

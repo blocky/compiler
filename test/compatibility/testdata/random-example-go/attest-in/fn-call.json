@@ -1,0 +1,7 @@
+{
+  "code_file": "got/x.wasm",
+  "function": "rollDie",
+  "input": {
+    "die_sides": 20
+  }
+}

@@ -4,13 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
 	"testing"
-)
 
-func containerRuntimeAvailable() bool {
-	return exec.Command("docker", "version").Run() == nil
-}
+	"github.com/blocky/compiler/test"
+)
 
 func TestMain(m *testing.M) {
 	flag.Parse()
@@ -20,7 +17,7 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	if !containerRuntimeAvailable() {
+	if !test.ContainerRuntimeAvailable() {
 		fmt.Fprintln(os.Stderr, "container runtime not available.")
 		os.Exit(1)
 	}

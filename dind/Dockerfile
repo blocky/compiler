@@ -7,7 +7,7 @@ ARG TARGETARCH
 
 USER root
 
-RUN apk add --no-cache curl delve gcc git musl-dev tar
+RUN apk add --no-cache curl delve gcc git jq musl-dev tar
 
 ENV GOBUNDLE=go${GOVERSION}.${TARGETOS}-${TARGETARCH}.tar.gz
 RUN rm -rf /usr/local/go/

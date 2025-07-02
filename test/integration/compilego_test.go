@@ -3,10 +3,8 @@ package integration
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -18,6 +16,7 @@ import (
 	"github.com/blocky/compiler/internal/bkyc"
 	"github.com/blocky/compiler/internal/container"
 	"github.com/blocky/compiler/mocks"
+	"github.com/blocky/compiler/test"
 )
 
 func copyTestData(t *testing.T, srcPath string, dstPath string) {
@@ -47,16 +46,6 @@ func assertDirEmpty(t *testing.T, path string) {
 	assert.Empty(t, content, "dir '%s' should be empty", path)
 }
 
-func removeContainersByPrefix(prefix string) *exec.Cmd {
-	removeCmd := fmt.Sprintf(`
-        cIDs=$(docker ps -a --filter "name=^/%s" -q)
-        if [ -n "$cIDs" ]; then
-            docker rm -f $cIDs
-        fi
-    `, prefix)
-	return exec.Command("bash", "-c", removeCmd)
-}
-
 func createTempDir(t *testing.T, mode os.FileMode) string {
 	outDir := t.TempDir()
 	err := os.Chmod(outDir, mode)
@@ -66,7 +55,7 @@ func createTempDir(t *testing.T, mode os.FileMode) string {
 
 func Test_CompileGo(t *testing.T) {
 	t.Cleanup(func() {
-		removeContainersByPrefix(bkyc.BkycPrefix)
+		test.RemoveContainersByPrefix(bkyc.BkycPrefix)
 	})
 
 	t.Run("happy path", func(t *testing.T) {

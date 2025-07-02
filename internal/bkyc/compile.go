@@ -16,8 +16,9 @@ func CompileGo(
 	r ContainerRunner,
 	inPath string,
 	outPath string,
+	reproducible bool,
 ) error {
-	goCfg, err := NewGoCompilerCfg(inPath, outPath)
+	goCfg, err := NewGoCompilerCfg(inPath, outPath, reproducible)
 	if err != nil {
 		return fmt.Errorf("creating go compilation config: %w", err)
 	}

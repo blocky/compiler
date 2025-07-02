@@ -4,15 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/adrg/xdg"
 )
 
 func FindCacheRoot() (string, error) {
-	cacheHome := os.Getenv("XDG_CACHE_HOME")
-	if cacheHome == "" {
-		cacheHome = os.Getenv("HOME")
-		cacheHome = filepath.Join(cacheHome, ".cache")
-	}
-	return cacheHome, nil
+	return xdg.CacheHome, nil
 }
 
 func FindGoProjectRoot(path string) (string, error) {

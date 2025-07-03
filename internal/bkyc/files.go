@@ -4,7 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/adrg/xdg"
 )
+
+func FindCacheRoot() (string, error) {
+	return xdg.CacheHome, nil
+}
 
 func FindGoProjectRoot(path string) (string, error) {
 	absPath, err := filepath.Abs(path)

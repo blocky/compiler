@@ -58,7 +58,7 @@ func Test_CompileGo(t *testing.T) {
 		test.RemoveContainersByPrefix(bkyc.BkycPrefix)
 	})
 
-	t.Run("happy path", func(t *testing.T) {
+	t.Run("happy path - reproducible (no cache)", func(t *testing.T) {
 		// given
 		mem := mocks.NewContainerMemory(t)
 
@@ -93,6 +93,7 @@ func Test_CompileGo(t *testing.T) {
 			),
 			inPath,
 			outPath,
+			true,
 		)
 
 		// then
@@ -102,6 +103,45 @@ func Test_CompileGo(t *testing.T) {
 			"./testdata/hello-world-hash-unvendored-go/want/x.wasm",
 			outPath,
 		)
+	})
+
+	t.Run("happy path - not reproducible (cache)", func(t *testing.T) {
+		// given
+		mem := mocks.NewContainerMemory(t)
+
+		// expecting
+		mem.EXPECT().
+			AddID(mock.Anything).
+			Return(nil).
+			Once()
+		mem.EXPECT().
+			RemoveID(mock.Anything).
+			Return(nil).
+			Once()
+
+		projRootDir := t.TempDir()
+		copyTestData(
+			t,
+			"./testdata/hello-world-hash-unvendored-go/in",
+			projRootDir,
+		)
+
+		outDir := createTempDir(t, 0777)
+
+		inPath := filepath.Join(projRootDir, "main.go")
+		outPath := filepath.Join(outDir, "got.wasm")
+
+		// when
+		gotErr := bkyc.CompileGo(
+			context.Background(),
+			container.NewRuntime(mem, slog.Default()),
+			inPath,
+			outPath,
+			false,
+		)
+
+		// then
+		assert.NoError(t, gotErr)
 	})
 
 	t.Run("incorrect source code", func(t *testing.T) {
@@ -139,6 +179,7 @@ func Test_CompileGo(t *testing.T) {
 			),
 			inPath,
 			outPath,
+			false,
 		)
 
 		// then
@@ -172,6 +213,7 @@ func Test_CompileGo(t *testing.T) {
 			),
 			inPath,
 			outPath,
+			false,
 		)
 
 		// then
@@ -200,6 +242,7 @@ func Test_CompileGo(t *testing.T) {
 			container.NewRuntime(nil, slog.Default()),
 			inPath,
 			outPath,
+			false,
 		)
 
 		// then
@@ -223,6 +266,7 @@ func Test_CompileGo(t *testing.T) {
 			container.NewRuntime(nil, slog.Default()),
 			inPath,
 			outPath,
+			false,
 		)
 
 		// then

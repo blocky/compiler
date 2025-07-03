@@ -13,7 +13,14 @@ import (
 	"github.com/rogpeppe/go-internal/testscript"
 )
 
-const empty = ""
+const (
+	empty    = ""
+	rootEUID = 0
+)
+
+func RunsAsRoot() bool {
+	return os.Geteuid() == rootEUID
+}
 
 type ProjectTest struct {
 	t          *testing.T

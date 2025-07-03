@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -13,17 +12,10 @@ import (
 const (
 	srcCodeDir = "testdata"
 	scriptDir  = "scripts"
-	tinyGoUID  = 1000
-	tinyGoGID  = 1000
-	rootEUID   = 0
 )
 
 func CLIPath() string {
 	return filepath.Join("..", "..", "cmd", cmd.CliName, "main.go")
-}
-
-func runsAsRoot() bool {
-	return os.Geteuid() == rootEUID
 }
 
 func TestBuild(t *testing.T) {
@@ -40,7 +32,7 @@ func TestBuild(t *testing.T) {
 			MakeDir("xdgHome").
 			SetXdgStateHomeDir("xdgHome").
 			MakeDir("got").
-			ChownIf(runsAsRoot, "got", tinyGoUID, tinyGoGID).
+			ChownIf(test.RunsAsRoot, "got", bkyc.TinyGoUID, bkyc.TinyGoGID).
 			ImportEnvVars(envVars).
 			SetEnvVar("CLI_APP_NAME", cmd.CliName)
 	}

@@ -26,11 +26,16 @@ func cleanUp(s *state.State, cleaner state.Cleaner, log state.Logger) error {
 	return nil
 }
 
+var reproducible bool
+
 var buildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "Build a WASM binary",
 	Args:  cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		inPath := args[0]
+		outPath := args[1]
+
 		ctx, cancelCtx := signal.NotifyContext(
 			context.Background(),
 			syscall.SIGINT,
@@ -51,8 +56,7 @@ var buildCmd = &cobra.Command{
 			cancelCtx()
 		}()
 
-		err = bkyc.CompileGo(ctx, runtime, args[0], args[1])
-
+		err = bkyc.CompileGo(ctx, runtime, inPath, outPath, reproducible)
 		switch {
 		case errors.Is(err, context.Canceled):
 			log.Info("Terminating...")
@@ -66,5 +70,11 @@ var buildCmd = &cobra.Command{
 }
 
 func init() {
+	buildCmd.Flags().BoolVar(
+		&reproducible,
+		"reproducible",
+		false,
+		"ignore cached dependencies (default: false)",
+	)
 	rootCmd.AddCommand(buildCmd)
 }

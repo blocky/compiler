@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -49,9 +48,20 @@ func (r *ReleaseInfo) Config() *ReleaseAsset {
 	return nil
 }
 
+func GetAccessToken() string {
+	return os.Getenv("GH_ACCESS_TOKEN")
+}
+
 func GetReleaseInfo(repo string, count int) ([]ReleaseInfo, error) {
 	addr := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=%d", repo, count)
-	resp, err := http.Get(addr)
+	req, err := http.NewRequest("GET", addr, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating api request: %w", err)
+	}
+	if GetAccessToken() != empty {
+		req.Header.Set("Authorization", "token "+GetAccessToken())
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("getting release info from '%s': %w", addr, err)
 	}
@@ -108,7 +118,6 @@ type Release struct {
 }
 
 func DownloadReleases(infos []ReleaseInfo, dstPath string) ([]Release, error) {
-	fmt.Println("Downloading binaries...")
 	var downloaded []Release
 	for _, releaseInfo := range infos {
 		releaseDir := filepath.Join(dstPath, releaseInfo.Tag)
@@ -122,15 +131,12 @@ func DownloadReleases(infos []ReleaseInfo, dstPath string) ([]Release, error) {
 		if err != nil {
 			return nil, fmt.Errorf("downloading binary: %w", err)
 		}
-		fmt.Printf("Path to binary: %s\n", binFile)
 
 		config := releaseInfo.Config()
-		fmt.Printf("Downloading config: %s\n", config.Name)
 		configFile, err := DownloadAsset(config, releaseDir)
 		if err != nil {
 			return nil, fmt.Errorf("downloading config: %w", err)
 		}
-		fmt.Printf("Path to config: %s\n", configFile)
 
 		downloaded = append(
 			downloaded,
@@ -140,13 +146,6 @@ func DownloadReleases(infos []ReleaseInfo, dstPath string) ([]Release, error) {
 				configPath: configFile,
 			},
 		)
-
-		fmt.Println("ReleaseInfo dir summary:")
-		out, err := exec.Command("ls", "-la", releaseDir).Output()
-		if err != nil {
-			return nil, fmt.Errorf("executing: ls -la: %w", err)
-		}
-		fmt.Println(string(out))
 	}
 	return downloaded, nil
 }

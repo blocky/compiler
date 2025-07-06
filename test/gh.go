@@ -8,12 +8,15 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
+	"time"
 )
 
 const (
 	AsSupportedReleases = 3
 	AsRepo              = "blocky/attestation-service-cli"
+	APIPageSize         = 50
 )
 
 func PlatformDescription() string {
@@ -26,8 +29,9 @@ type ReleaseAsset struct {
 }
 
 type ReleaseInfo struct {
-	Tag    string         `json:"tag_name"`
-	Assets []ReleaseAsset `json:"assets"`
+	Tag         string         `json:"tag_name"`
+	Assets      []ReleaseAsset `json:"assets"`
+	PublishedAt time.Time      `json:"published_at"`
 }
 
 func (r *ReleaseInfo) Binary() *ReleaseAsset {
@@ -49,45 +53,71 @@ func (r *ReleaseInfo) Config() *ReleaseAsset {
 }
 
 func GetAccessToken() string {
-	return os.Getenv("GH_ACCESS_TOKEN")
+	return os.Getenv("BKY_COMPILER_GITHUB_TOKEN")
 }
 
 func GetReleaseInfo(repo string, count int) ([]ReleaseInfo, error) {
-	addr := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=%d", repo, count)
-	req, err := http.NewRequest("GET", addr, nil)
-	if err != nil {
-		return nil, fmt.Errorf("creating api request: %w", err)
-	}
-	if GetAccessToken() != empty {
-		req.Header.Set("Authorization", "token "+GetAccessToken())
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("getting release info from '%s': %w", addr, err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		msg, err := io.ReadAll(resp.Body)
+	var infos []ReleaseInfo
+	page := 1
+	for {
+		addr := fmt.Sprintf(
+			"https://api.github.com/repos/%s/releases?per_page=%d&page=%d",
+			repo,
+			APIPageSize,
+			page,
+		)
+		req, err := http.NewRequest("GET", addr, nil)
 		if err != nil {
+			return nil, fmt.Errorf("creating api request: %w", err)
+		}
+		if GetAccessToken() != empty {
+			req.Header.Set("Authorization", "token "+GetAccessToken())
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("getting release info from '%s': %w", addr, err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			msg, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"reading release info response from '%s': %w",
+					addr,
+					err,
+				)
+			}
 			return nil, fmt.Errorf(
-				"reading release info response from '%s': %w",
+				"getting release info from '%s', received status '%d', msg: '%s'",
 				addr,
-				err,
+				resp.StatusCode,
+				msg,
 			)
 		}
+		var infoBatch []ReleaseInfo
+		err = func() error {
+			defer resp.Body.Close()
+			return json.NewDecoder(resp.Body).Decode(&infoBatch)
+		}()
+		if err != nil {
+			return nil, fmt.Errorf("decoding release info from '%s': %w", addr, err)
+		}
+		if len(infoBatch) == 0 {
+			break
+		}
+		infos = append(infos, infoBatch...)
+		page++
+	}
+	sort.Slice(infos, func(i, j int) bool {
+		return infos[i].PublishedAt.After(infos[j].PublishedAt)
+	})
+	if count > len(infos) {
 		return nil, fmt.Errorf(
-			"getting release info from '%s', received status '%d', msg: '%s'",
-			addr,
-			resp.StatusCode,
-			msg,
+			"expected release count ('%d') exceeds the actual count ('%d')",
+			count,
+			len(infos),
 		)
 	}
-	var relInfo []ReleaseInfo
-	err = json.NewDecoder(resp.Body).Decode(&relInfo)
-	if err != nil {
-		return nil, fmt.Errorf("decoding release info from '%s': %w", addr, err)
-	}
-	return relInfo, nil
+	return infos[:count], nil
 }
 
 func DownloadAsset(asset *ReleaseAsset, dstDir string) (string, error) {

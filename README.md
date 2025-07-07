@@ -1,9 +1,9 @@
 # BKY-C
 WASM (reproducible) compilation tool
 
-## Building contenerized environment
-In order to run or debug tests in an isolated docker-in-docker setup you need to enable
-multiplatform builds via `docker build buildx`.
+## Working with the containerized environment (docker-in-docker/dind setup)
+In order to run or debug tests (integration, compatibility, any ending in `-dind`) in an isolated
+docker-in-docker setup you need to enable multiplatform builds via `docker build buildx`.
 If you need to enable it you may want to look at the following target:
 ```bash
 make container-setup
@@ -26,4 +26,10 @@ you can start a test debug run from your IDE. In `Goland` standard `Go Remote` t
 To run integration tests inside a container with a dedicated Docker daemon run:
 ```bash
 make test-integration-dind
+```
+
+## Running compatibility tests in docker-in-docker setup
+To run compatibility tests inside a container with a dedicated Docker daemon run:
+```bash
+make test-compatibility-dind
 ```

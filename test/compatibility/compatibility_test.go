@@ -1,4 +1,4 @@
-package integration
+package compatibility
 
 import (
 	"flag"
@@ -13,7 +13,7 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 
 	if testing.Short() {
-		fmt.Fprintln(os.Stdout, "skipping integration tests in short mode.")
+		fmt.Fprintln(os.Stdout, "skipping compatibility tests in short mode.")
 		return
 	}
 

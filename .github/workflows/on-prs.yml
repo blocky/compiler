@@ -71,3 +71,25 @@ jobs:
 
     - name: Run Integration Tests
       run: make test-integration-dind
+
+  compatibility-test:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      GOPRIVATE: github.com/blocky/*
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+        with:
+          gh-access-token: ${{ secrets.GH_ACCESS_TOKEN }}
+
+      - name: Setup docker buildx
+        shell: bash
+        run: |
+          make container-setup
+
+      - name: Run Compatibility Tests
+        run: make test-compatibility-dind

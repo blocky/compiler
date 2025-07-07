@@ -1,4 +1,4 @@
-package integration
+package test
 
 import (
 	"bytes"
@@ -13,7 +13,14 @@ import (
 	"github.com/rogpeppe/go-internal/testscript"
 )
 
-const empty = ""
+const (
+	empty    = ""
+	rootEUID = 0
+)
+
+func RunsAsRoot() bool {
+	return os.Geteuid() == rootEUID
+}
 
 type ProjectTest struct {
 	t          *testing.T
@@ -128,6 +135,36 @@ func (e *ProjectTest) BuildIfMissing(path string, name string) *ProjectTest {
 		return nil
 	}
 
+	e.setupFuncs = append(e.setupFuncs, setupFunc)
+	return e
+}
+
+func (e *ProjectTest) DownloadSupportedASReleases() *ProjectTest {
+	setupFunc := func(env *testscript.Env) error {
+		relInfo, err := GetReleaseInfo(AsRepo, AsSupportedReleases)
+		if err != nil {
+			return fmt.Errorf("getting release info: %w", err)
+		}
+		releases, err := DownloadReleases(relInfo, env.WorkDir)
+		if err != nil {
+			return fmt.Errorf("downloading release info: %w", err)
+		}
+		for i, release := range releases {
+			err := os.Chmod(release.binPath, 0755)
+			if err != nil {
+				return fmt.Errorf("adding '+x' to binary permissions: %w", err)
+			}
+			env.Setenv(
+				fmt.Sprintf("BKY_AS_RELEASE_%d_BIN", i+1),
+				release.binPath,
+			)
+			env.Setenv(
+				fmt.Sprintf("BKY_AS_RELEASE_%d_CONFIG", i+1),
+				release.configPath,
+			)
+		}
+		return nil
+	}
 	e.setupFuncs = append(e.setupFuncs, setupFunc)
 	return e
 }

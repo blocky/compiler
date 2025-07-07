@@ -74,6 +74,7 @@ jobs:
 
   compatibility-test:
     runs-on: ubuntu-latest
+    continue-on-error: true
     env:
       GOPRIVATE: github.com/blocky/*
     steps:

@@ -1,7 +1,7 @@
 # BKY-C
 WASM (reproducible) compilation tool
 
-## Building contenerized environment
+## Building containerized environment
 In order to run or debug tests in an isolated docker-in-docker setup you need to enable
 multiplatform builds via `docker build buildx`.
 If you need to enable it you may want to look at the following target:

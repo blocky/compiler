@@ -5,6 +5,7 @@ BKY_DIND_IMAGE_NAME=bky-dind-env-rootless
 # steps on the correct dependencies. The order of the others do not matter.
 pre-pr: \
  	tidy \
+	liceses \
 	lint \
 	test-short \
 	test-integration \
@@ -92,5 +93,10 @@ mock: tidy
 	@rm -rf mocks
 	@mockery --quiet --config=mockery.yaml
 
+licenses:
+	@rm -rf cmd/bky-c/cmd/licenses
+	go-licenses save ./cmd/bky-c --save_path ./cmd/bky-c/cmd/licenses
+
 veryclean:
+	@rm -rf cmd/bky-c/cmd/licenses
 	@rm -rf mocks

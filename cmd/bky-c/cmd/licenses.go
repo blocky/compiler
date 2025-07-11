@@ -9,17 +9,17 @@ import (
 )
 
 //go:embed licenses/*
-var FS embed.FS
+var licenses embed.FS
 
 var licensesCmd = &cobra.Command{
 	Use:   "licenses",
 	Short: "Print embedded third-party license info",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return fs.WalkDir(FS, ".", func(path string, d fs.DirEntry, err error) error {
+		return fs.WalkDir(licenses, ".", func(path string, d fs.DirEntry, err error) error {
 			if err != nil || d.IsDir() {
 				return err
 			}
-			data, err := FS.ReadFile(path)
+			data, err := licenses.ReadFile(path)
 			if err != nil {
 				return err
 			}

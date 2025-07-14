@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -10,10 +11,6 @@ import (
 
 type Cleaner interface {
 	CleanUp(context.Context, string) error
-}
-
-type Logger interface {
-	Debug(string, ...any)
 }
 
 func ProcRunning(pid int) (bool, error) {
@@ -24,7 +21,7 @@ func ProcRunning(pid int) (bool, error) {
 	return p.Signal(syscall.Signal(0)) == nil, nil
 }
 
-func CleanupStale(dirPath string, cleaner Cleaner, log Logger) error {
+func CleanupStale(dirPath string, cleaner Cleaner, log *slog.Logger) error {
 	dirEntries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return fmt.Errorf("reading app state dir: %w", err)

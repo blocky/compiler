@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/blocky/compiler/internal/logsniffer"
 	"github.com/blocky/compiler/internal/state"
 	"github.com/blocky/compiler/mocks"
 )
@@ -761,9 +762,10 @@ func TestState_CleanIDs(t *testing.T) {
 		ctx := context.Background()
 		appStateDir := t.TempDir()
 		validPID := os.Getpid()
-		mockLogger := mocks.NewStateLogger(t)
 
-		sut, err := state.Init(appStateDir, validPID, mockLogger)
+		testLogger := logsniffer.NewLogger()
+
+		sut, err := state.Init(appStateDir, validPID, testLogger.Slog())
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 1)
 
@@ -781,9 +783,6 @@ func TestState_CleanIDs(t *testing.T) {
 				CleanUp(context.Background(), ID).
 				Return(wantError).
 				Once()
-			mockLogger.EXPECT().
-				Debug("cleaning up id", "id", ID, "err", wantError.Error()).
-				Once()
 		}
 		mockCleaner.EXPECT().
 			CleanUp(context.Background(), wantIDs[len(wantIDs)-1]).
@@ -797,6 +796,20 @@ func TestState_CleanIDs(t *testing.T) {
 		assert.Equal(t, wantErroringIDs, sut.IDs())
 		assertIDsEqual(t, sut.Dir(), wantErroringIDs)
 		assertDirElementCount(t, appStateDir, 1)
+		for _, ID := range wantErroringIDs {
+			assert.Equal(
+				t,
+				1,
+				testLogger.RecordCountWithAttrs(
+					slog.LevelDebug,
+					"cleaning up id",
+					[]slog.Attr{
+						slog.String("err", wantError.Error()),
+						slog.String("id", ID),
+					},
+				),
+			)
+		}
 	})
 }
 
@@ -835,9 +848,9 @@ func TestState_Finalize(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
 		validPID := os.Getpid()
-		mockLogger := mocks.NewStateLogger(t)
+		testLogger := logsniffer.NewLogger()
 
-		sut, err := state.Init(appStateDir, validPID, mockLogger)
+		sut, err := state.Init(appStateDir, validPID, testLogger.Slog())
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 1)
 
@@ -855,9 +868,6 @@ func TestState_Finalize(t *testing.T) {
 				CleanUp(context.Background(), ID).
 				Return(wantError).
 				Once()
-			mockLogger.EXPECT().
-				Debug("cleaning up id", "id", ID, "err", wantError.Error()).
-				Once()
 		}
 		mockCleaner.EXPECT().
 			CleanUp(context.Background(), wantIDs[len(wantIDs)-1]).
@@ -872,15 +882,28 @@ func TestState_Finalize(t *testing.T) {
 		assert.Equal(t, wantErroringIDs, sut.IDs())
 		assertIDsEqual(t, sut.Dir(), wantErroringIDs)
 		assertDirElementCount(t, appStateDir, 1)
+		for _, ID := range wantErroringIDs {
+			assert.Equal(
+				t,
+				1,
+				testLogger.RecordCountWithAttrs(
+					slog.LevelDebug,
+					"cleaning up id",
+					[]slog.Attr{
+						slog.String("id", ID),
+						slog.String("err", wantError.Error()),
+					},
+				),
+			)
+		}
 	})
 
 	t.Run("error finalizing stale state", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
 		validPID := os.Getpid()
-		mockLogger := mocks.NewStateLogger(t)
 
-		sut, err := state.Init(appStateDir, validPID, mockLogger)
+		sut, err := state.Init(appStateDir, validPID, slog.Default())
 		require.NoError(t, err)
 		err = os.Chmod(sut.Dir(), 0555)
 		require.NoError(t, err)

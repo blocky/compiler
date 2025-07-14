@@ -31,11 +31,6 @@ type Config struct {
 	AutoRemove bool
 }
 
-type Logger interface {
-	Error(string, ...any)
-	Debug(string, ...any)
-}
-
 type HTTPDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
@@ -43,7 +38,7 @@ type HTTPDoer interface {
 type APIClient struct {
 	Doer    HTTPDoer
 	BaseURL string
-	Log     Logger
+	Log     *slog.Logger
 }
 
 func NewAPIClient() *APIClient {
@@ -54,7 +49,7 @@ func NewAPIClient() *APIClient {
 	}
 }
 
-func NewAPIClientWithLogger(log Logger) *APIClient {
+func NewAPIClientWithLogger(log *slog.Logger) *APIClient {
 	return &APIClient{
 		Doer:    newUnixSockHTTPClient(),
 		BaseURL: "http://unix.sock",

@@ -5,10 +5,8 @@ filename: "{{.PackageName | camelcase}}{{.InterfaceName}}.go"
 packages:
   github.com/blocky/compiler/internal/container:
     interfaces:
-      Logger:
       Client:
       Memory:
   github.com/blocky/compiler/internal/state:
     interfaces:
       Cleaner:
-      Logger:

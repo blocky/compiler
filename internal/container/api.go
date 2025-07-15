@@ -12,8 +12,6 @@ import (
 	"net/url"
 	"slices"
 	"strconv"
-
-	"github.com/moby/moby/pkg/stdcopy"
 )
 
 const APIVersion = "1.47"
@@ -284,6 +282,7 @@ func NewCreateConfig(in Config) CreateConfig {
 			Binds:      in.Binds,
 			AutoRemove: in.AutoRemove,
 		},
+		TTY: false,
 	}
 }
 
@@ -382,13 +381,11 @@ func (c *APIClient) Logs(ctx context.Context, cID string) (string, string, error
 	}
 	defer resp.Body.Close()
 
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	_, err = stdcopy.StdCopy(stdout, stderr, resp.Body)
+	outBytes, errBytes, err := SplitOutput(resp.Body)
 	if err != nil {
 		return "", "", fmt.Errorf("de-multiplexing logs: %w", err)
 	}
-	return stdout.String(), stderr.String(), nil
+	return string(outBytes), string(errBytes), nil
 }
 
 func (c *APIClient) Stop(ctx context.Context, cID string) error {

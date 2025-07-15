@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/moby/moby/pkg/stdcopy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1123,11 +1122,9 @@ func TestClient_Logs(t *testing.T) {
 		wantStdErr := "output from stderr"
 
 		wantLogs := &bytes.Buffer{}
-		_, err := stdcopy.NewStdWriter(wantLogs, stdcopy.Stdout).
-			Write([]byte(wantStdOut))
+		err := writeBytes(wantLogs, container.StdOut, []byte(wantStdOut))
 		require.NoError(t, err)
-		_, err = stdcopy.NewStdWriter(wantLogs, stdcopy.Stderr).
-			Write([]byte(wantStdErr))
+		err = writeBytes(wantLogs, container.StdErr, []byte(wantStdErr))
 		require.NoError(t, err)
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1138,7 +1135,7 @@ func TestClient_Logs(t *testing.T) {
 
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
-			_, err := fmt.Fprintln(w, wantLogs.String())
+			_, err := w.Write(wantLogs.Bytes())
 			require.NoError(t, err)
 		}))
 		defer ts.Close()

@@ -50,15 +50,11 @@ func attrsContain(record slog.Record, phrase string) bool {
 }
 
 func (l *Logger) LevelCount(level slog.Level) int {
-	l.rec.Lock()
-	defer l.rec.Unlock()
-	return len(l.rec.records[level])
+	return len(l.rec.Records(level))
 }
 
 func (l *Logger) Records(level slog.Level) []slog.Record {
-	l.rec.Lock()
-	defer l.rec.Unlock()
-	return l.rec.records[level]
+	return l.rec.Records(level)
 }
 
 func sortAttrsByKey(attrs []slog.Attr) []slog.Attr {
@@ -100,10 +96,8 @@ func (l *Logger) RecordCountWithAttrs(
 	msg string,
 	attrs []slog.Attr,
 ) int {
-	l.rec.Lock()
-	defer l.rec.Unlock()
 	matched := 0
-	for _, record := range l.rec.records[level] {
+	for _, record := range l.rec.Records(level) {
 		if record.Message != msg {
 			continue
 		}
@@ -119,11 +113,8 @@ func (l *Logger) RecordCount(
 	level slog.Level,
 	msg string,
 ) int {
-	l.rec.Lock()
-	defer l.rec.Unlock()
-
 	matched := 0
-	for _, record := range l.rec.records[level] {
+	for _, record := range l.rec.Records(level) {
 		if record.Message == msg {
 			matched++
 		}
@@ -132,10 +123,7 @@ func (l *Logger) RecordCount(
 }
 
 func (l *Logger) Logged(level slog.Level, phrase string) bool {
-	l.rec.Lock()
-	defer l.rec.Unlock()
-
-	for _, record := range l.rec.records[level] {
+	for _, record := range l.rec.Records(level) {
 		if msgContains(record, phrase) {
 			return true
 		}
@@ -166,26 +154,32 @@ type sniffer struct {
 	mutex       sync.Mutex
 }
 
-func (s *sniffer) Lock() {
-	s.mutex.Lock()
+func cloneRecord(record slog.Record) slog.Record {
+	cloned := slog.Record{
+		Message: record.Message,
+	}
+	all := allAttrs(record)
+	if len(all) > 0 {
+		cloned.AddAttrs(all...)
+	}
+	return cloned
 }
 
-func (s *sniffer) Unlock() {
-	s.mutex.Unlock()
+func (s *sniffer) Records(level slog.Level) []slog.Record {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	var cloned []slog.Record
+	for _, record := range s.records[level] {
+		cloned = append(cloned, cloneRecord(record))
+	}
+	return cloned
 }
 
 func (s *sniffer) Handle(ctx context.Context, record slog.Record) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	cloned := slog.Record{
-		Message: record.Message,
-	}
-
-	all := allAttrs(record)
-	if len(all) > 0 {
-		cloned.AddAttrs(all...)
-	}
-	s.records[record.Level] = append(s.records[record.Level], cloned)
+	s.records[record.Level] = append(s.records[record.Level], cloneRecord(record))
 	if s.baseHandler != nil {
 		return s.baseHandler.Handle(ctx, record)
 	}

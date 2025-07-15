@@ -14,11 +14,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/blocky/compiler/internal/container"
-	"github.com/blocky/compiler/mocks"
+	"github.com/blocky/compiler/internal/logsniffer"
 )
 
 type ClientThatErrors struct {
@@ -459,18 +458,12 @@ func TestClient_PullImage(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		// expecting
-		mockLogger := mocks.NewContainerLogger(t)
-		for _, status := range wantPullStatus {
-			mockLogger.EXPECT().
-				Debug(status).
-				Once()
-		}
+		testLogger := logsniffer.NewLogger()
 
 		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
-			Log:     mockLogger,
+			Log:     testLogger.Slog(),
 		}
 
 		// when
@@ -478,6 +471,13 @@ func TestClient_PullImage(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+		for _, status := range wantPullStatus {
+			assert.True(
+				t,
+				testLogger.Logged(slog.LevelDebug, status),
+				"expected to find log '%s' on '%d', level", status, slog.LevelDebug,
+			)
+		}
 	})
 
 	t.Run("error in pull stream", func(t *testing.T) {
@@ -507,18 +507,12 @@ func TestClient_PullImage(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		// expecting
-		mockLogger := mocks.NewContainerLogger(t)
-		for _, status := range wantPullStatus {
-			mockLogger.EXPECT().
-				Debug(status).
-				Once()
-		}
+		testLogger := logsniffer.NewLogger()
 
 		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
-			Log:     mockLogger,
+			Log:     testLogger.Slog(),
 		}
 
 		// when
@@ -528,6 +522,14 @@ func TestClient_PullImage(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "pulling image")
 		assert.ErrorContains(t, err, wantPullError)
+
+		for _, status := range wantPullStatus {
+			assert.True(
+				t,
+				testLogger.Logged(slog.LevelDebug, status),
+				"expected to find log '%s' on '%d', level", status, slog.LevelDebug,
+			)
+		}
 	})
 
 	t.Run("error decoding pull stream", func(t *testing.T) {
@@ -548,14 +550,12 @@ func TestClient_PullImage(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		// expecting
-		mockLogger := mocks.NewContainerLogger(t)
-		mockLogger.AssertNotCalled(t, "Debug", mock.Anything)
+		testLogger := logsniffer.NewLogger()
 
 		sut := &container.APIClient{
 			Doer:    ts.Client(),
 			BaseURL: ts.URL,
-			Log:     mockLogger,
+			Log:     testLogger.Slog(),
 		}
 
 		// when
@@ -564,6 +564,7 @@ func TestClient_PullImage(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "decoding image pull stream")
+		assert.Equal(t, testLogger.LevelCount(slog.LevelDebug), 0)
 	})
 
 	for name, tc := range map[string]struct {

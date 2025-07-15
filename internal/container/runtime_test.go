@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/blocky/compiler/internal/container"
+	"github.com/blocky/compiler/internal/logsniffer"
 	"github.com/blocky/compiler/mocks"
 )
 
@@ -84,18 +84,13 @@ func TestRuntime_GetImage(t *testing.T) {
 		wantImage := "test:latest"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
-		mockLogger := mocks.NewContainerLogger(t)
-		sut := container.NewRuntimeFromRaw(mockClient, nil, mockLogger)
+		testLogger := logsniffer.NewLogger()
+		sut := container.NewRuntimeFromRaw(mockClient, nil, testLogger.Slog())
 
 		// expecting
 		mockClient.EXPECT().
 			ImageExists(ctx, wantImage).
 			Return(false, nil).
-			Once()
-
-		mockLogger.EXPECT().
-			Debug("Image not available, pulling", "image", wantImage).
-			Return().
 			Once()
 
 		mockClient.EXPECT().
@@ -108,6 +103,15 @@ func TestRuntime_GetImage(t *testing.T) {
 
 		// then
 		require.NoError(t, gotErr)
+		assert.Equal(
+			t,
+			1,
+			testLogger.RecordCountWithAttrs(
+				slog.LevelDebug,
+				"Image not available, pulling",
+				[]slog.Attr{slog.String("image", wantImage)},
+			),
+		)
 	})
 
 	t.Run("error checking if image exists", func(t *testing.T) {
@@ -116,8 +120,7 @@ func TestRuntime_GetImage(t *testing.T) {
 		wantErrorMsg := "test error message"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
-		mockLogger := mocks.NewContainerLogger(t)
-		sut := container.NewRuntimeFromRaw(mockClient, nil, mockLogger)
+		sut := container.NewRuntimeFromRaw(mockClient, nil, slog.Default())
 
 		// expecting
 		mockClient.EXPECT().
@@ -139,18 +142,13 @@ func TestRuntime_GetImage(t *testing.T) {
 		wantImage := "test:latest"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
-		mockLogger := mocks.NewContainerLogger(t)
-		sut := container.NewRuntimeFromRaw(mockClient, nil, mockLogger)
+		testLogger := logsniffer.NewLogger()
+		sut := container.NewRuntimeFromRaw(mockClient, nil, testLogger.Slog())
 
 		// expecting
 		mockClient.EXPECT().
 			ImageExists(ctx, wantImage).
 			Return(false, nil).
-			Once()
-
-		mockLogger.EXPECT().
-			Debug("Image not available, pulling", "image", wantImage).
-			Return().
 			Once()
 
 		mockClient.EXPECT().
@@ -164,6 +162,15 @@ func TestRuntime_GetImage(t *testing.T) {
 		// then
 		require.Error(t, gotErr)
 		assert.ErrorContains(t, gotErr, wantErrorMsg)
+		assert.Equal(
+			t,
+			1,
+			testLogger.RecordCountWithAttrs(
+				slog.LevelDebug,
+				"Image not available, pulling",
+				[]slog.Attr{slog.String("image", wantImage)},
+			),
+		)
 	})
 }
 
@@ -393,13 +400,12 @@ func TestRuntime_CleanUp(t *testing.T) {
 		// given
 		wantID := "testid"
 		ctx := context.Background()
-		mockLogger := mocks.NewContainerLogger(t)
 		mockClient := mocks.NewContainerClient(t)
 		mockMemory := mocks.NewContainerMemory(t)
 		sut := container.NewRuntimeFromRaw(
 			mockClient,
 			mockMemory,
-			mockLogger,
+			slog.Default(),
 		)
 
 		// expecting
@@ -434,8 +440,12 @@ func TestRuntime_CleanUp(t *testing.T) {
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
 		mockMemory := mocks.NewContainerMemory(t)
-		mockLogger := mocks.NewContainerLogger(t)
-		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, mockLogger)
+		testLogger := logsniffer.NewLogger()
+		sut := container.NewRuntimeFromRaw(
+			mockClient,
+			mockMemory,
+			testLogger.Slog(),
+		)
 
 		// expecting
 		mockClient.EXPECT().
@@ -443,15 +453,21 @@ func TestRuntime_CleanUp(t *testing.T) {
 			Return(false, nil).
 			Once()
 
-		mockLogger.EXPECT().
-			Debug("Container doesn't exist", "id", wantID).
-			Once()
-
 		// when
 		gotErr := sut.CleanUp(ctx, wantID)
 
 		// then
 		require.NoError(t, gotErr)
+		assert.Equal(
+			t,
+			1,
+			testLogger.RecordCountWithAttrs(
+				slog.LevelDebug,
+				"Container doesn't exist",
+				[]slog.Attr{slog.String("id", wantID)},
+			),
+		)
+
 	})
 
 	t.Run("error checking if container exists", func(t *testing.T) {
@@ -461,8 +477,11 @@ func TestRuntime_CleanUp(t *testing.T) {
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
 		mockMemory := mocks.NewContainerMemory(t)
-		mockLogger := mocks.NewContainerLogger(t)
-		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, mockLogger)
+		sut := container.NewRuntimeFromRaw(
+			mockClient,
+			mockMemory,
+			slog.Default(),
+		)
 
 		// expecting
 		mockClient.EXPECT().
@@ -484,9 +503,13 @@ func TestRuntime_CleanUp(t *testing.T) {
 		wantErr := fmt.Errorf("test error message")
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
-		mockLogger := mocks.NewContainerLogger(t)
 		mockMemory := mocks.NewContainerMemory(t)
-		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, mockLogger)
+		testLogger := logsniffer.NewLogger()
+		sut := container.NewRuntimeFromRaw(
+			mockClient,
+			mockMemory,
+			testLogger.Slog(),
+		)
 
 		// expecting
 		mockClient.EXPECT().
@@ -497,10 +520,6 @@ func TestRuntime_CleanUp(t *testing.T) {
 		mockClient.EXPECT().
 			Stop(ctx, wantID).
 			Return(wantErr).
-			Once()
-
-		mockLogger.EXPECT().
-			Debug("stopping container", "err", wantErr.Error()).
 			Once()
 
 		mockClient.EXPECT().
@@ -518,6 +537,15 @@ func TestRuntime_CleanUp(t *testing.T) {
 
 		// then
 		require.NoError(t, gotErr)
+		assert.Equal(
+			t,
+			1,
+			testLogger.RecordCountWithAttrs(
+				slog.LevelDebug,
+				"stopping container",
+				[]slog.Attr{slog.String("err", wantErr.Error())},
+			),
+		)
 	})
 
 	t.Run("error removing container", func(t *testing.T) {
@@ -559,9 +587,8 @@ func TestRuntime_CleanUp(t *testing.T) {
 		wantErr := fmt.Errorf("test error message")
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
-		mockLogger := mocks.NewContainerLogger(t)
 		mockMemory := mocks.NewContainerMemory(t)
-		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, mockLogger)
+		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, slog.Default())
 
 		// expecting
 		mockClient.EXPECT().
@@ -606,9 +633,13 @@ func TestRuntime_Run(t *testing.T) {
 		wantStdErr := "output from stderr"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
-		mockLogger := mocks.NewContainerLogger(t)
+		testLogger := logsniffer.NewLogger()
 		mockMemory := mocks.NewContainerMemory(t)
-		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, mockLogger)
+		sut := container.NewRuntimeFromRaw(
+			mockClient,
+			mockMemory,
+			testLogger.Slog(),
+		)
 
 		// expecting
 		mockClient.EXPECT().
@@ -657,15 +688,6 @@ func TestRuntime_Run(t *testing.T) {
 			Return(nil).
 			Once()
 
-		mockLogger.EXPECT().
-			Debug(wantStdOut).
-			Return().
-			Once()
-		mockLogger.EXPECT().
-			Debug(wantStdErr).
-			Return().
-			Once()
-
 		// when
 		gotOutput, gotErr := sut.Run(ctx, givenCfg)
 
@@ -675,6 +697,22 @@ func TestRuntime_Run(t *testing.T) {
 		assert.Equal(t, wantMsg, gotOutput.ErrorMsg)
 		assert.Equal(t, wantStdOut, gotOutput.StdOut)
 		assert.Equal(t, wantStdErr, gotOutput.StdErr)
+		assert.Equal(
+			t,
+			1,
+			testLogger.RecordCount(
+				slog.LevelDebug,
+				wantStdOut,
+			),
+		)
+		assert.Equal(
+			t,
+			1,
+			testLogger.RecordCount(
+				slog.LevelDebug,
+				wantStdErr,
+			),
+		)
 	})
 
 	t.Run("runtime not compatible", func(t *testing.T) {
@@ -685,9 +723,8 @@ func TestRuntime_Run(t *testing.T) {
 		}
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
-		mockLogger := mocks.NewContainerLogger(t)
 		mockMemory := mocks.NewContainerMemory(t)
-		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, mockLogger)
+		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, slog.Default())
 
 		// expecting
 		mockClient.EXPECT().
@@ -712,9 +749,8 @@ func TestRuntime_Run(t *testing.T) {
 		wantErrMsg := "test error message"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
-		mockLogger := mocks.NewContainerLogger(t)
 		mockMemory := mocks.NewContainerMemory(t)
-		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, mockLogger)
+		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, slog.Default())
 
 		// expecting
 		mockClient.EXPECT().
@@ -739,9 +775,8 @@ func TestRuntime_Run(t *testing.T) {
 		wantErrMsg := "test error message"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
-		mockLogger := mocks.NewContainerLogger(t)
 		mockMemory := mocks.NewContainerMemory(t)
-		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, mockLogger)
+		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, slog.Default())
 
 		// expecting
 		mockClient.EXPECT().
@@ -771,9 +806,8 @@ func TestRuntime_Run(t *testing.T) {
 		wantErrMsg := "test error message"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
-		mockLogger := mocks.NewContainerLogger(t)
 		mockMemory := mocks.NewContainerMemory(t)
-		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, mockLogger)
+		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, slog.Default())
 
 		// expecting
 		mockClient.EXPECT().
@@ -816,9 +850,8 @@ func TestRuntime_Run(t *testing.T) {
 		wantErrMsg := "test error message"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
-		mockLogger := mocks.NewContainerLogger(t)
 		mockMemory := mocks.NewContainerMemory(t)
-		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, mockLogger)
+		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, slog.Default())
 
 		// expecting
 		mockClient.EXPECT().
@@ -885,9 +918,13 @@ func TestRuntime_Run(t *testing.T) {
 		wantErrMsg := "removing container: test error message"
 		ctx := context.Background()
 		mockClient := mocks.NewContainerClient(t)
-		mockLogger := mocks.NewContainerLogger(t)
 		mockMemory := mocks.NewContainerMemory(t)
-		sut := container.NewRuntimeFromRaw(mockClient, mockMemory, mockLogger)
+		testLogger := logsniffer.NewLogger()
+		sut := container.NewRuntimeFromRaw(
+			mockClient,
+			mockMemory,
+			testLogger.Slog(),
+		)
 
 		// expecting
 		mockClient.EXPECT().
@@ -927,18 +964,6 @@ func TestRuntime_Run(t *testing.T) {
 			Return(errors.New(wantErrMsg)).
 			Once()
 
-		mockLogger.EXPECT().
-			Debug(wantStdOut).
-			Return().
-			Once()
-		mockLogger.EXPECT().
-			Debug(wantStdErr).
-			Return().
-			Once()
-		mockLogger.EXPECT().
-			Error("cleaning up container", "err", mock.Anything).
-			Once()
-
 		mockMemory.EXPECT().
 			AddID(wantID).
 			Return(nil).
@@ -953,5 +978,29 @@ func TestRuntime_Run(t *testing.T) {
 		assert.Equal(t, wantMsg, gotOutput.ErrorMsg)
 		assert.Equal(t, wantStdOut, gotOutput.StdOut)
 		assert.Equal(t, wantStdErr, gotOutput.StdErr)
+		assert.Equal(
+			t,
+			1,
+			testLogger.RecordCount(
+				slog.LevelDebug,
+				wantStdOut,
+			),
+		)
+		assert.Equal(
+			t,
+			1,
+			testLogger.RecordCount(
+				slog.LevelDebug,
+				wantStdErr,
+			),
+		)
+		assert.Equal(
+			t,
+			1,
+			testLogger.RecordCount(
+				slog.LevelError,
+				"cleaning up container",
+			),
+		)
 	})
 }

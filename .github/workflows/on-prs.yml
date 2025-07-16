@@ -92,4 +92,6 @@ jobs:
           make container-setup
 
       - name: Run Compatibility Tests
+        env:
+          BKY_COMPILER_GH_TOKEN: ${{ secrets.GH_ACTIONS_PUBLIC_API_ACCESS }}
         run: make test-compatibility-dind

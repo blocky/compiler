@@ -93,5 +93,5 @@ jobs:
 
       - name: Run Compatibility Tests
         env:
-          BKY_COMPILER_GH_TOKEN: ${{ secrets.GH_ACTIONS_PUBLIC_API_ACCESS }}
+          BKY_COMPILER_GH_TOKEN: ${{ secrets.GH_ACTIONS_GH_PUBLIC_API_ACCESS_NO_SCOPES }}
         run: make test-compatibility-dind

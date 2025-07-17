@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+project_name: bky-c
+
+builds:
+  - id: bky-c-release
+    main: ./cmd/bky-c/
+    no_unique_dist_dir: true
+    binary: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      # for a full list of flags see https://pkg.go.dev/cmd/link
+      # for quick reference:
+      # -s, -w  omit symbol tables that are not needed for running in production
+      - -s -w
+
+archives:
+  - formats: [ 'tar.gz' ]
+    name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: 'checksums.txt'
+
+release:
+  draft: true
+  prerelease: "true"

@@ -65,6 +65,7 @@ test-compatibility-dind: containers
 		--name=test-compatibility-dind \
 		--user=root \
 		--privileged \
+		-e BKY_COMPILER_GH_TOKEN \
 		-v .:/src \
 		-w /src \
 		${BKY_DIND_IMAGE_NAME}:28.2.2 \

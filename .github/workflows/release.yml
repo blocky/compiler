@@ -7,7 +7,6 @@ on:
 
 jobs:
   unit-test:
-    if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
@@ -15,25 +14,18 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup-env
-        with:
-          gh-access-token: ${{ secrets.GH_ACCESS_TOKEN }}
 
       - name: Run Unit Tests
         run: make test-short
 
   integration-test:
-    if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    env:
-      GOPRIVATE: github.com/blocky/*
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
       - name: Setup Environment
         uses: ./.github/actions/setup-env
-        with:
-          gh-access-token: ${{ secrets.GH_ACCESS_TOKEN }}
 
       - name: Setup docker buildx
         shell: bash
@@ -44,18 +36,13 @@ jobs:
         run: make test-integration-dind
 
   compatibility-test:
-    if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    env:
-      GOPRIVATE: github.com/blocky/*
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
       - name: Setup Environment
         uses: ./.github/actions/setup-env
-        with:
-          gh-access-token: ${{ secrets.GH_ACCESS_TOKEN }}
 
       - name: Setup docker buildx
         shell: bash
@@ -66,18 +53,14 @@ jobs:
         run: make test-compatibility-dind
 
   release:
-    if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
+    needs: [unit-test, integration-test, compatibility-test]
     runs-on: ubuntu-latest
-    env:
-      GOPRIVATE: github.com/blocky/*
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
       - name: Setup Environment
         uses: ./.github/actions/setup-env
-        with:
-          gh-access-token: ${{ secrets.GH_ACCESS_TOKEN }}
 
       - name: Make Release
         uses: goreleaser/goreleaser-action@v6

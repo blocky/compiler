@@ -6,6 +6,3 @@ dockerd.log
 
 # local releases
 dist
-
-# IDEs
-.idea

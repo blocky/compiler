@@ -5,7 +5,7 @@ BKY_DIND_IMAGE_NAME=bky-dind-env-rootless
 # steps on the correct dependencies. The order of the others do not matter.
 pre-pr: \
  	tidy \
-	liceses \
+	licenses \
 	lint \
 	test-short \
 	test-integration \

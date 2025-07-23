@@ -1,2 +1,8 @@
+# docker daemon logs
 dockerd.log
+
+# testing binaries
 *.test
+
+# local releases
+dist

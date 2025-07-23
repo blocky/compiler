@@ -95,3 +95,6 @@ mock: tidy
 
 veryclean:
 	@rm -rf mocks
+
+local-release:
+	@goreleaser release --snapshot --clean

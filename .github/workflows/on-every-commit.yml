@@ -15,8 +15,6 @@ jobs:
 
     - name: Setup Environment
       uses: ./.github/actions/setup-env
-      with:
-        gh-access-token: ${{ secrets.GH_ACCESS_TOKEN }}
 
     - name: Run Unit Tests
       run: make test-short

@@ -66,6 +66,7 @@ test-compatibility-dind: containers
 		--name=test-compatibility-dind \
 		--user=root \
 		--privileged \
+		-e BKY_COMPILER_GH_TOKEN \
 		-v .:/src \
 		-w /src \
 		${BKY_DIND_IMAGE_NAME}:28.2.2 \
@@ -100,3 +101,6 @@ licenses:
 veryclean:
 	@rm -rf cmd/bky-c/cmd/licenses
 	@rm -rf mocks
+
+local-release:
+	@goreleaser release --snapshot --clean

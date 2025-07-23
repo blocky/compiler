@@ -12,8 +12,6 @@ import (
 	"net/url"
 	"slices"
 	"strconv"
-
-	"github.com/moby/moby/pkg/stdcopy"
 )
 
 const APIVersion = "1.47"
@@ -31,11 +29,6 @@ type Config struct {
 	AutoRemove bool
 }
 
-type Logger interface {
-	Error(string, ...any)
-	Debug(string, ...any)
-}
-
 type HTTPDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
@@ -43,7 +36,7 @@ type HTTPDoer interface {
 type APIClient struct {
 	Doer    HTTPDoer
 	BaseURL string
-	Log     Logger
+	Log     *slog.Logger
 }
 
 func NewAPIClient() *APIClient {
@@ -54,7 +47,7 @@ func NewAPIClient() *APIClient {
 	}
 }
 
-func NewAPIClientWithLogger(log Logger) *APIClient {
+func NewAPIClientWithLogger(log *slog.Logger) *APIClient {
 	return &APIClient{
 		Doer:    newUnixSockHTTPClient(),
 		BaseURL: "http://unix.sock",
@@ -289,6 +282,7 @@ func NewCreateConfig(in Config) CreateConfig {
 			Binds:      in.Binds,
 			AutoRemove: in.AutoRemove,
 		},
+		TTY: false,
 	}
 }
 
@@ -387,13 +381,11 @@ func (c *APIClient) Logs(ctx context.Context, cID string) (string, string, error
 	}
 	defer resp.Body.Close()
 
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	_, err = stdcopy.StdCopy(stdout, stderr, resp.Body)
+	outBytes, errBytes, err := SplitOutput(resp.Body)
 	if err != nil {
 		return "", "", fmt.Errorf("de-multiplexing logs: %w", err)
 	}
-	return stdout.String(), stderr.String(), nil
+	return string(outBytes), string(errBytes), nil
 }
 
 func (c *APIClient) Stop(ctx context.Context, cID string) error {

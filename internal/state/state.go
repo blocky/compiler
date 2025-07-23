@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -22,7 +23,7 @@ type State struct {
 	dir     string
 	dirLock io.Closer
 	time    time.Time
-	log     Logger
+	log     *slog.Logger
 
 	ids []string
 }
@@ -53,7 +54,7 @@ func FromInstanceDir(dirPath string) (int, uuid.UUID, error) {
 	return pid, ID, nil
 }
 
-func Init(dirPath string, pID int, log Logger) (*State, error) {
+func Init(dirPath string, pID int, log *slog.Logger) (*State, error) {
 	s := &State{
 		dir:  InstanceDir(dirPath, pID, uuid.New()),
 		time: time.Now(),
@@ -73,7 +74,7 @@ func Init(dirPath string, pID int, log Logger) (*State, error) {
 	return s, nil
 }
 
-func Load(dirPath string, log Logger) (*State, error) {
+func Load(dirPath string, log *slog.Logger) (*State, error) {
 	lock, err := Lock(dirPath)
 	if err != nil {
 		return nil, fmt.Errorf("acquiring dir lock: %w", err)

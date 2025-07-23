@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+
+      - name: Run Unit Tests
+        run: make test-short
+
+  integration-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+
+      - name: Setup docker buildx
+        shell: bash
+        run: |
+          make container-setup
+
+      - name: Run Integration Tests
+        run: make test-integration-dind
+
+  compatibility-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+
+      - name: Setup docker buildx
+        shell: bash
+        run: |
+          make container-setup
+
+      - name: Run Compatibility Tests
+        run: make test-compatibility-dind
+
+  release:
+    needs: [unit-test, integration-test, compatibility-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+
+      - name: Make Release
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: '~> v2'
+          distribution: goreleaser
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

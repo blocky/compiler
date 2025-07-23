@@ -3,6 +3,7 @@ package container
 import (
 	"context"
 	"fmt"
+	"log/slog"
 )
 
 const OK = 0
@@ -25,7 +26,7 @@ type Memory interface {
 	RemoveID(string) error
 }
 
-func NewRuntimeFromRaw(client Client, mem Memory, log Logger) *Runtime {
+func NewRuntimeFromRaw(client Client, mem Memory, log *slog.Logger) *Runtime {
 	return &Runtime{
 		client: client,
 		log:    log,
@@ -33,7 +34,7 @@ func NewRuntimeFromRaw(client Client, mem Memory, log Logger) *Runtime {
 	}
 }
 
-func NewRuntime(mem Memory, log Logger) *Runtime {
+func NewRuntime(mem Memory, log *slog.Logger) *Runtime {
 	return &Runtime{
 		client: NewAPIClientWithLogger(log),
 		log:    log,
@@ -43,7 +44,7 @@ func NewRuntime(mem Memory, log Logger) *Runtime {
 
 type Runtime struct {
 	client Client
-	log    Logger
+	log    *slog.Logger
 	mem    Memory
 }
 

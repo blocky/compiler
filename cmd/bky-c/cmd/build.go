@@ -16,7 +16,7 @@ import (
 	"github.com/blocky/compiler/internal/state"
 )
 
-func cleanUp(s *state.State, cleaner state.Cleaner, log state.Logger) error {
+func cleanUp(s *state.State, cleaner state.Cleaner, log *slog.Logger) error {
 	if err := s.Finalize(cleaner); err != nil {
 		return fmt.Errorf("failed to clean-up state: %w", err)
 	}

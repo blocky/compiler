@@ -27,8 +27,6 @@ jobs:
 
     - name: Setup Environment
       uses: ./.github/actions/setup-env
-      with:
-        gh-access-token: ${{ secrets.GH_ACCESS_TOKEN }}
 
     - uses: blocky/actions/go-lint@main
       with:
@@ -45,24 +43,18 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup-env
-        with:
-          gh-access-token: ${{ secrets.GH_ACCESS_TOKEN }}
 
       - name: Run Unit Tests
         run: make test-short
 
   integration-test:
     runs-on: ubuntu-latest
-    env:
-        GOPRIVATE: github.com/blocky/*
     steps:
     - name: Checkout Repo
       uses: actions/checkout@v4
 
     - name: Setup Environment
       uses: ./.github/actions/setup-env
-      with:
-        gh-access-token: ${{ secrets.GH_ACCESS_TOKEN }}
 
     - name: Setup docker buildx
       shell: bash
@@ -75,16 +67,12 @@ jobs:
   compatibility-test:
     runs-on: ubuntu-latest
     continue-on-error: true
-    env:
-      GOPRIVATE: github.com/blocky/*
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
       - name: Setup Environment
         uses: ./.github/actions/setup-env
-        with:
-          gh-access-token: ${{ secrets.GH_ACCESS_TOKEN }}
 
       - name: Setup docker buildx
         shell: bash
@@ -92,4 +80,6 @@ jobs:
           make container-setup
 
       - name: Run Compatibility Tests
+        env:
+          BKY_COMPILER_GH_TOKEN: ${{ secrets.GH_ACTIONS_GH_PUBLIC_API_ACCESS_NO_SCOPES }}
         run: make test-compatibility-dind

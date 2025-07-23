@@ -53,7 +53,7 @@ func (r *ReleaseInfo) Config() *ReleaseAsset {
 }
 
 func GetAccessToken() string {
-	return os.Getenv("BKY_COMPILER_GITHUB_TOKEN")
+	return os.Getenv("BKY_COMPILER_GH_TOKEN")
 }
 
 func GetReleaseInfo(repo string, count int) ([]ReleaseInfo, error) {

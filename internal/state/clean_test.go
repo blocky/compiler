@@ -10,9 +10,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/blocky/compiler/internal/logsniffer"
 	"github.com/blocky/compiler/internal/state"
 	"github.com/blocky/compiler/mocks"
 )
@@ -25,15 +25,15 @@ func TestCleanupStale(t *testing.T) {
 		appStateDir := t.TempDir()
 		validPID := os.Getpid()
 
-		mockLogger := mocks.NewStateLogger(t)
 		mockCleaner := mocks.NewStateCleaner(t)
+		defLogger := slog.Default()
 
-		_, err := state.Init(appStateDir, validPID, mockLogger)
+		_, err := state.Init(appStateDir, validPID, defLogger)
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 1)
 
 		// when
-		err = state.CleanupStale(appStateDir, mockCleaner, mockLogger)
+		err = state.CleanupStale(appStateDir, mockCleaner, defLogger)
 
 		// then
 		require.NoError(t, err)
@@ -54,7 +54,6 @@ func TestCleanupStale(t *testing.T) {
 	t.Run("happy path - stale state", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
-		mockLogger := mocks.NewStateLogger(t)
 
 		wantIDs := []string{"a", "b", "c"}
 		prepareStaleStateDir(t, appStateDir, wantIDs)
@@ -70,7 +69,7 @@ func TestCleanupStale(t *testing.T) {
 		}
 
 		// when
-		err := state.CleanupStale(appStateDir, mockCleaner, mockLogger)
+		err := state.CleanupStale(appStateDir, mockCleaner, slog.Default())
 
 		// then
 		require.NoError(t, err)
@@ -150,28 +149,16 @@ func TestCleanupStale(t *testing.T) {
 	t.Run("error loading stale state", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
-		mockLogger := mocks.NewStateLogger(t)
+		testLogger := logsniffer.NewLogger()
 
-		staleInstance, err := state.Init(appStateDir, StalePID, mockLogger)
+		staleInstance, err := state.Init(appStateDir, StalePID, testLogger.Slog())
 		require.NoError(t, err)
 		assertDirElementCount(t, appStateDir, 1)
 		err = os.Remove(filepath.Join(staleInstance.Dir(), "ids.json"))
 		require.NoError(t, err)
 
-		// expecting
-
-		mockLogger.EXPECT().
-			Debug(
-				"loading stale state",
-				"name",
-				mock.Anything,
-				"err",
-				mock.Anything,
-			).
-			Once()
-
 		// when
-		err = state.CleanupStale(appStateDir, nil, mockLogger)
+		err = state.CleanupStale(appStateDir, nil, testLogger.Slog())
 
 		// then
 		require.NoError(t, err)
@@ -188,17 +175,24 @@ func TestCleanupStale(t *testing.T) {
 			1,
 			StalePID,
 		)
-
+		assert.Equal(
+			t,
+			1,
+			testLogger.RecordCount(
+				slog.LevelDebug,
+				"loading stale state",
+			),
+		)
 	})
 
 	t.Run("error cleaning some IDs", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
-		mockLogger := mocks.NewStateLogger(t)
-
 		wantIDs := []string{"a", "b", "c"}
 		dirInfo := prepareStaleStateDir(t, appStateDir, wantIDs)
 		assertDirElementCount(t, appStateDir, 1)
+
+		testLogger := logsniffer.NewLogger()
 
 		mockCleaner := mocks.NewStateCleaner(t)
 		wantError := errors.New("cleanup error")
@@ -209,9 +203,6 @@ func TestCleanupStale(t *testing.T) {
 				CleanUp(context.Background(), ID).
 				Return(wantError).
 				Once()
-			mockLogger.EXPECT().
-				Debug("cleaning up id", "id", ID, "err", wantError.Error()).
-				Once()
 		}
 		mockCleaner.EXPECT().
 			CleanUp(context.Background(), wantIDs[len(wantIDs)-1]).
@@ -219,12 +210,26 @@ func TestCleanupStale(t *testing.T) {
 			Once()
 
 		// when
-		err := state.CleanupStale(appStateDir, mockCleaner, mockLogger)
+		err := state.CleanupStale(appStateDir, mockCleaner, testLogger.Slog())
 
 		// then
 		require.NoError(t, err)
 		assertIDsEqual(t, dirInfo.dir, wantErroringIDs)
 		assertDirElementCount(t, appStateDir, 1)
+		for _, ID := range wantErroringIDs {
+			assert.Equal(
+				t,
+				1,
+				testLogger.RecordCountWithAttrs(
+					slog.LevelDebug,
+					"cleaning up id",
+					[]slog.Attr{
+						slog.String("id", ID),
+						slog.String("err", wantError.Error()),
+					},
+				),
+			)
+		}
 	})
 
 	t.Run("error reading state directory", func(t *testing.T) {
@@ -242,7 +247,6 @@ func TestCleanupStale(t *testing.T) {
 	t.Run("error finalizing stale state", func(t *testing.T) {
 		// given
 		appStateDir := t.TempDir()
-		mockLogger := mocks.NewStateLogger(t)
 
 		wantIDs := []string{"a", "b", "c"}
 		dirInfo := prepareStaleStateDir(t, appStateDir, wantIDs)
@@ -253,6 +257,8 @@ func TestCleanupStale(t *testing.T) {
 		}()
 		assertDirElementCount(t, appStateDir, 1)
 
+		testLogger := logsniffer.NewLogger()
+
 		mockCleaner := mocks.NewStateCleaner(t)
 		for _, ID := range wantIDs {
 			// expecting
@@ -262,18 +268,8 @@ func TestCleanupStale(t *testing.T) {
 				Once()
 		}
 
-		mockLogger.EXPECT().
-			Debug(
-				"finalizing stale state",
-				"name",
-				mock.Anything,
-				"err",
-				mock.Anything,
-			).
-			Once()
-
 		// when
-		err = state.CleanupStale(appStateDir, mockCleaner, mockLogger)
+		err = state.CleanupStale(appStateDir, mockCleaner, testLogger.Slog())
 
 		// then
 		require.NoError(t, err)
@@ -290,6 +286,16 @@ func TestCleanupStale(t *testing.T) {
 			1,
 			dirInfo.pid,
 		)
+
+		assert.Equal(
+			t,
+			1,
+			testLogger.RecordCount(
+				slog.LevelDebug,
+				"finalizing stale state",
+			),
+		)
+
 	})
 }
 

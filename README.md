@@ -1,6 +1,13 @@
 # BKY-C
 WASM (reproducible) compilation tool
 
+## Dev Environment
+For development and testing you should use the provided `Nix` environment.
+To run it:
+```bash
+nix develop
+```
+
 ## Working with the containerized environment (docker-in-docker/dind setup)
 In order to run or debug tests (integration, compatibility, any ending in `-dind`) in an isolated
 docker-in-docker setup you need to enable multiplatform builds via `docker build buildx`.

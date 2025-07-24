@@ -28,7 +28,7 @@ builds:
       - -s -w
 
 archives:
-  - formats: [ 'tar.gz' ]
+  - formats: [ 'tar.gz', 'binary' ]
     name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:

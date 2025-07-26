@@ -12,7 +12,7 @@ builds:
   - id: bky-c-release
     main: ./cmd/bky-c/
     no_unique_dist_dir: true
-    binary: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    binary: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
     env:
       - CGO_ENABLED=0
     goos:
@@ -29,7 +29,7 @@ builds:
 
 archives:
   - formats: [ 'tar.gz', 'binary' ]
-    name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
   name_template: 'checksums.txt'

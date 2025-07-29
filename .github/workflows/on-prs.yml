@@ -11,14 +11,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  approve:
-    if: contains(github.event.pull_request.labels.*.name, 'auto-approve-me')
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-    steps:
-      - uses: hmarr/auto-approve-action@v3
-
   lint:
     runs-on: ubuntu-latest
     steps:

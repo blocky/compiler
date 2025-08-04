@@ -14,13 +14,8 @@ import (
 )
 
 const (
-	empty    = ""
-	rootEUID = 0
+	empty = ""
 )
-
-func RunsAsRoot() bool {
-	return os.Geteuid() == rootEUID
-}
 
 type ProjectTest struct {
 	t          *testing.T

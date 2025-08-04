@@ -56,24 +56,6 @@ func (e *ProjectTest) MakeDir(relPath string) *ProjectTest {
 	return e
 }
 
-type Condition func() bool
-
-func (e *ProjectTest) ChownIf(ok Condition, relPath string, uid, gid int) *ProjectTest {
-	setupFunc := func(env *testscript.Env) error {
-		if !ok() {
-			return nil
-		}
-		dir := filepath.Join(env.WorkDir, relPath)
-		err := os.Chown(dir, uid, gid)
-		if err != nil {
-			return fmt.Errorf("failed to set owner of directory %s: %w", dir, err)
-		}
-		return nil
-	}
-	e.setupFuncs = append(e.setupFuncs, setupFunc)
-	return e
-}
-
 func (e *ProjectTest) CopyDir(relPath string) *ProjectTest {
 	setupFunc := func(env *testscript.Env) error {
 		srcDir := filepath.Join(e.projectDir, relPath)

@@ -91,6 +91,14 @@ function verifyCurl() {
     fi
 }
 
+function verifyJq() {
+    if command -v "jq" > /dev/null; then
+        passCheck "You have jq installed: $(which jq)"
+    else
+        exitWithErr "You do not have jq installed."
+    fi
+}
+
 function downloadCLI() {
     local version=$1
     local os=$2
@@ -133,13 +141,15 @@ function verifyCLI() {
 }
 
 function main() {
-    version=$(getCLIVersion "$@")
-    echo "Selected CLI version: $version"
     local os=$(getOS)
     local arch=$(getArch)
 
     verifySupport "$os" "$arch"
     verifyCurl
+    verifyJq
+
+    version=$(getCLIVersion "$@")
+    echo "Selected CLI version: $version"
     downloadCLI "$version" "$os" "$arch"
     verifyCLI
 }

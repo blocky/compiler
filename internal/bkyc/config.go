@@ -44,7 +44,8 @@ func NewFastGoContainerCfg(
 		Cmd: []string{
 			"sh", "-c",
 			fmt.Sprintf(
-				`sudo chown -R %v:%v /home/tinygo/.cache &&`+
+				`sudo chown -R %v:%v /out &&`+
+					`sudo chown -R %v:%v /home/tinygo/.cache &&`+
 					`sudo chown -R %v:%v /home/tinygo/go &&`+
 					`tinygo build `+
 					`-target=wasi `+
@@ -54,6 +55,8 @@ func NewFastGoContainerCfg(
 					`-opt=z `+
 					`%s `+
 					`&& touch -d "@%s" /out/%s`,
+				TinyGoUID,
+				TinyGoGID,
 				TinyGoUID,
 				TinyGoGID,
 				TinyGoUID,
@@ -98,7 +101,8 @@ func NewReproducibleGoContainerCfg(
 		Cmd: []string{
 			"sh", "-c",
 			fmt.Sprintf(
-				`tinygo build `+
+				`sudo chown -R %v:%v /out &&`+
+					`tinygo build `+
 					`-target=wasi `+
 					`-o /out/%s `+
 					`-scheduler=none `+
@@ -107,6 +111,8 @@ func NewReproducibleGoContainerCfg(
 					`%s `+
 					`&& `+
 					`touch -d "@%s" /out/%s`,
+				TinyGoUID,
+				TinyGoGID,
 				outFile,
 				inFile,
 				FixedSourceDateEpoch,

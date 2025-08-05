@@ -1,5 +1,52 @@
+> :exclamation: The BLOCKY Compiler is provided with no
+> guarantees. By trying out the repo, binary or invoking the `bky-c` executable you
+> agree to not hold BLOCKY responsible for any problems, mishaps,
+> adverse effects, or frustrations.
+> 
 # BKY-C
 WASM (reproducible) compilation tool
+
+## Installation
+
+To install the latest version run:
+```bash
+curl -s https://raw.githubusercontent.com/blocky/compiler/refs/heads/main/install.sh | bash
+```
+
+To install a specific version run:
+```bash
+curl -s https://raw.githubusercontent.com/blocky/compiler/refs/heads/main/install.sh | bash -s -- -v <selected-version>
+```
+for example:
+```bash
+curl -s https://raw.githubusercontent.com/blocky/compiler/refs/heads/main/install.sh | bash -s -- -v v0.1.0-beta.1
+
+```
+
+## Building go to WASM
+To build your `go` application into `WASM` use `bky-c` build command:
+```bash
+bky-c build <path-to-your-app> <path-to-output-binary-file>
+```
+for example
+```bash
+bky-c build ./main.go ./out/x.wasm
+```
+
+please note that:
+
+`<path-to-your-app>` can be either relative and absolute and point to:
+- an input file, or
+- an input/project folder
+
+You also need to make sure thar the folder in which you wish to put
+the output binary exists. The compiler will not create the folder for you.
+
+## Viewing licenses
+To display all licenses associated with `bky-c` and its dependencies run:
+```bash
+bky-c licenses
+```
 
 ## Dev Environment
 For development and testing you should use the provided `Nix` environment.

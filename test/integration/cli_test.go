@@ -32,7 +32,6 @@ func TestBuild(t *testing.T) {
 			MakeDir("xdgHome").
 			SetXdgStateHomeDir("xdgHome").
 			MakeDir("got").
-			ChownIf(test.RunsAsRoot, "got", bkyc.TinyGoUID, bkyc.TinyGoGID).
 			ImportEnvVars(envVars).
 			SetEnvVar("CLI_APP_NAME", cmd.CliName)
 	}

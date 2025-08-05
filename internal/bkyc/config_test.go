@@ -22,7 +22,8 @@ func TestNewFastGoContainerCfg(t *testing.T) {
 			Cmd: []string{
 				"sh",
 				"-c",
-				"sudo chown -R 1000:1000 /home/tinygo/.cache &&" +
+				`sudo chown -R 1000:1000 /out &&` +
+					"sudo chown -R 1000:1000 /home/tinygo/.cache &&" +
 					"sudo chown -R 1000:1000 /home/tinygo/go &&" +
 					"tinygo build " +
 					"-target=wasi " +
@@ -74,7 +75,8 @@ func TestNewReproducibleGoContainerCfg(t *testing.T) {
 			Cmd: []string{
 				"sh",
 				"-c",
-				"tinygo build " +
+				`sudo chown -R 1000:1000 /out &&` +
+					"tinygo build " +
 					"-target=wasi " +
 					"-o /out/outFile " +
 					"-scheduler=none " +

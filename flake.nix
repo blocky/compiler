@@ -23,7 +23,6 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        docker = pkgs.docker_27;
       in
       {
         devShells.default = pkgs.mkShell {
@@ -35,7 +34,7 @@
             pkgs.go-licenses
             pkgs.go-mockery
             pkgs.goreleaser
-            docker
+            pkgs.docker_27
           ];
         };
       }

@@ -25,6 +25,16 @@
 
       in
       {
+        packages.bky-c = pkgs.buildGoModule {
+          pname = "bky-c";
+          version = "${self.shortRev or "dirty"}";
+
+          src = ./.;
+
+          vendorHash = "sha256-yIs80Le6rbksqZyNF1PA7DPkKokz+QYexH1UwkItncU=";
+          doCheck = false;
+        };
+
         devShells.default = pkgs.mkShell {
           name = "bky-c-dev-shell";
           packages = [

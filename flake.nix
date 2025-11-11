@@ -27,7 +27,7 @@
       {
         packages.bky-c = pkgs.buildGoModule {
           pname = "bky-c";
-          version = "0.1.0-prerelease";
+          version = "${self.shortRev or "dirty"}";
 
           src = ./.;
 
